@@ -3,8 +3,8 @@ import * as v from "valibot";
 // Common schemas
 const notionalSchema = v.pipe(
   v.number("Amount must be a number"),
-  v.minValue(1000, "Minimum amount is 1,000"),
-  v.maxValue(1000000000, "Amount exceeds pool limit")
+  v.minValue(1, "Minimum amount is 1"),
+  v.maxValue(1_000_000_000, "Amount exceeds pool limit")
 );
 
 const priceSchema = v.pipe(
@@ -23,7 +23,11 @@ export const LimitOrderSchema = v.object({
   limitPrice: priceSchema,
   account: requiredString,
   liquidityPool: requiredString,
-  timeInForce: v.optional(requiredString),
+  timeInForce: v.optional(v.nullish(requiredString)),
+  orderId: v.optional(v.nullish(v.string())),
+  stopPrice: v.optional(v.nullish(v.number())),
+  startTime: v.optional(v.nullish(v.string())),
+  notes: v.optional(v.nullish(v.string())),
 });
 
 export const MarketOrderSchema = v.object({
@@ -33,7 +37,27 @@ export const MarketOrderSchema = v.object({
   notional: notionalSchema,
   account: requiredString,
   liquidityPool: requiredString,
-  timeInForce: v.optional(requiredString),
+  timeInForce: v.optional(v.nullish(requiredString)),
+  orderId: v.optional(v.nullish(v.string())),
+  limitPrice: v.optional(v.nullish(v.number())),
+  stopPrice: v.optional(v.nullish(v.number())),
+  startTime: v.optional(v.nullish(v.string())),
+  notes: v.optional(v.nullish(v.string())),
+});
+
+export const FloatOrderSchema = v.object({
+  symbol: requiredString,
+  direction: requiredString,
+  orderType: requiredString,
+  notional: notionalSchema,
+  limitPrice: v.optional(v.nullish(priceSchema)), // Optional for FLOAT
+  account: requiredString,
+  orderId: v.optional(v.nullish(v.string())),
+  liquidityPool: v.optional(v.nullish(v.string())),
+  timeInForce: v.optional(v.nullish(requiredString)),
+  stopPrice: v.optional(v.nullish(v.number())),
+  startTime: v.optional(v.nullish(v.string())),
+  notes: v.optional(v.nullish(v.string())),
 });
 
 // Map schemas to types
@@ -42,4 +66,5 @@ export const SCHEMA_MAP: Record<string, v.GenericSchema> = {
   MARKET: MarketOrderSchema,
   TAKE_PROFIT: LimitOrderSchema, // Reusing Limit for demo
   STOP_LOSS: LimitOrderSchema, // Reusing Limit for demo
+  FLOAT: FloatOrderSchema,
 };

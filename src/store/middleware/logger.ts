@@ -6,9 +6,9 @@ export const loggerMiddleware =
     (set, get, api) =>
       config(
         (args: T | Partial<T> | ((state: T) => T | Partial<T>)) => {
-          console.log("  prev state", get());
+          // console.log("  prev state", get());
           set(args);
-          console.log("  new state", get());
+          // console.log("  new state", get());
           // Lightweight logging
         },
         get,

@@ -1,6 +1,6 @@
 export type Direction = "BUY" | "SELL";
 
-export type OrderType = "LIMIT" | "MARKET" | "STOP_LOSS" | "TAKE_PROFIT";
+export type OrderType = "LIMIT" | "MARKET" | "STOP_LOSS" | "TAKE_PROFIT" | "FLOAT";
 
 export type TimeInForce = "GTC" | "GTD" | "IOC" | "FOK";
 

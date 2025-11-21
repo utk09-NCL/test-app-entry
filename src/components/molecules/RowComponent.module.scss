@@ -1,45 +1,68 @@
 @use "../../styles/variables" as *;
 
 .row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  margin-bottom: 1rem;
+  display: grid;
+  grid-template-columns: 35% 65%;
+  grid-template-rows: auto auto;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid $color-border;
+  background-color: #1e1d22;
+
+  &.even {
+    background-color: #2e2f31;
+  }
+
+  &.editable {
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: rgba(66, 133, 244, 0.1);
+    }
+  }
 }
 
 .header {
+  grid-column: 1;
+  grid-row: 1;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 0.5rem;
 }
 
 .label {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   font-weight: 600;
   color: $color-muted;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .content {
-  position: relative;
+  grid-column: 2;
+  grid-row: 1;
+  width: 100%;
 }
 
 .error {
-  font-size: 0.75rem;
+  grid-column: 2;
+  grid-row: 2;
   color: $color-sell;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+  padding-left: 0;
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 .spacer {
-  height: 1rem;
+  display: none;
 }
 
 @keyframes pulse {
+
   0%,
   100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }

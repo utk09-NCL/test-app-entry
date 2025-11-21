@@ -1,6 +1,13 @@
 export interface FieldDefinition {
   label: string;
-  component: "InputNumber" | "InputText" | "Select" | "Toggle" | "DateTime";
+  component:
+    | "InputNumber"
+    | "InputText"
+    | "Select"
+    | "Toggle"
+    | "DateTime"
+    | "AmountWithCurrency"
+    | "LimitPriceWithCheckbox";
   props?: Record<string, unknown>;
 }
 
@@ -21,13 +28,13 @@ export const FIELD_REGISTRY: Record<string, FieldDefinition> = {
     props: { disabled: true },
   },
   notional: {
-    label: "Amount (CCY1)",
-    component: "InputNumber",
+    label: "Amount",
+    component: "AmountWithCurrency",
     props: { min: 1000, step: 100000, placeholder: "1,000,000" },
   },
   limitPrice: {
     label: "Limit Price",
-    component: "InputNumber",
+    component: "LimitPriceWithCheckbox",
     props: { precision: 5, step: 0.0001 },
   },
   stopPrice: {

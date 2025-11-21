@@ -27,9 +27,11 @@ export const useAppInit = () => {
             { id: "EXT_POOL_A", name: "External Agg 1", provider: "Ext" },
           ],
           currencyPairs: [
-            { symbol: "EUR/USD", base: "EUR", quote: "USD", precision: 5 },
-            { symbol: "GBP/USD", base: "GBP", quote: "USD", precision: 5 },
-            { symbol: "USD/JPY", base: "USD", quote: "JPY", precision: 3 },
+            { symbol: "GBPUSD", base: "GBP", quote: "USD", precision: 5 },
+            { symbol: "EURUSD", base: "EUR", quote: "USD", precision: 5 },
+            { symbol: "USDINR", base: "USD", quote: "INR", precision: 4 },
+            { symbol: "GBPINR", base: "GBP", quote: "INR", precision: 4 },
+            { symbol: "EURGBP", base: "EUR", quote: "GBP", precision: 5 },
           ],
         });
         setStatus("READY");

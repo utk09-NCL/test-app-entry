@@ -1,0 +1,30 @@
+@use "../../styles/variables" as *;
+
+.container {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+}
+
+.toggleButton {
+  min-width: 4rem;
+  padding: 0.5rem 1rem;
+  background-color: $color-primary;
+  color: $color-text-primary;
+  border: 1px solid $color-border;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    background-color: adjust($color-primary, 10%);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}

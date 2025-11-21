@@ -11,6 +11,9 @@ interface RowProps {
   children: React.ReactNode;
   fieldKey?: string;
   isGroupField?: boolean;
+  rowIndex?: number;
+  isEditable?: boolean;
+  onDoubleClick?: () => void;
 }
 
 export const RowComponent = ({
@@ -20,13 +23,34 @@ export const RowComponent = ({
   children,
   fieldKey,
   isGroupField,
+  rowIndex,
+  isEditable,
+  onDoubleClick,
 }: RowProps) => {
   const testId = fieldKey || label.toLowerCase().replace(/\s+/g, "-");
   const labelId = fieldKey ? `label-for-${fieldKey}` : undefined;
+  const rowClassName =
+    rowIndex !== undefined && rowIndex % 2 === 0 ? `${styles.row} ${styles.even}` : styles.row;
+
+  const rowClassNames = `${rowClassName} ${isEditable ? styles.editable : ""}`;
+
+  const handleLabelDoubleClick = (e: React.MouseEvent) => {
+    if (isEditable && onDoubleClick) {
+      e.preventDefault();
+      e.stopPropagation();
+      onDoubleClick();
+    }
+  };
 
   return (
-    <div className={styles.row} data-testid={`row-${testId}`}>
-      <div className={styles.header} data-testid={`row-header-${testId}`}>
+    <div className={rowClassNames} data-testid={`row-${testId}`}>
+      <div
+        className={styles.header}
+        data-testid={`row-header-${testId}`}
+        onDoubleClick={handleLabelDoubleClick}
+        style={isEditable ? { cursor: "pointer" } : undefined}
+        title={isEditable ? "Double-click to edit" : undefined}
+      >
         <label
           className={styles.label}
           data-testid={`label-${testId}`}

@@ -7,34 +7,62 @@ import { useOrderEntryStore } from "../../store";
 import { OrderStateData, OrderType } from "../../types/domain";
 import { Input } from "../atoms/Input";
 import { Select } from "../atoms/Select";
+import { AmountWithCurrency } from "../molecules/AmountWithCurrency";
+import { LimitPriceWithCheckbox } from "../molecules/LimitPriceWithCheckbox";
 import { RowComponent } from "../molecules/RowComponent";
 import { ToggleSwitch } from "../molecules/ToggleSwitch";
 
 import styles from "./OrderForm.module.scss";
 
 // Component to bridge store and UI for a single field
-const FieldController = ({ fieldKey }: { fieldKey: keyof OrderStateData }) => {
+const FieldController = ({
+  fieldKey,
+  rowIndex,
+}: {
+  fieldKey: keyof OrderStateData;
+  rowIndex?: number;
+}) => {
   // Selectors optimized to prevent re-renders
   const value = useOrderEntryStore((s) => s.getDerivedValues()[fieldKey]);
   const error = useOrderEntryStore((s) => s.errors[fieldKey]);
   const validating = useOrderEntryStore((s) => s.isValidating[fieldKey]);
+  const status = useOrderEntryStore((s) => s.status);
+  const symbol = useOrderEntryStore((s) => s.getDerivedValues().symbol);
+  const direction = useOrderEntryStore((s) => s.getDerivedValues().direction);
+  const orderType = useOrderEntryStore((s) => s.getDerivedValues().orderType);
 
   const setFieldValue = useOrderEntryStore((s) => s.setFieldValue);
   const validateField = useOrderEntryStore((s) => s.validateField);
+  const amendOrder = useOrderEntryStore((s) => s.amendOrder);
 
   // Select only necessary ref data
   const accounts = useOrderEntryStore((s) => s.accounts);
   const pools = useOrderEntryStore((s) => s.pools);
+  const currencyPairs = useOrderEntryStore((s) => s.currencyPairs);
 
   const def = FIELD_REGISTRY[fieldKey];
+  const config = ORDER_TYPES[orderType as keyof typeof ORDER_TYPES];
+  const isInReadOnlyMode = status === "READ_ONLY";
+  const isAmending = status === "AMENDING";
+  const isFieldEditable = config?.editableFields.includes(fieldKey);
+
+  // Field is read-only if:
+  // - In READ_ONLY status (after submit, before amend clicked)
+  // - OR in AMENDING status but field is not in editableFields list
+  const isReadOnly = isInReadOnlyMode || (isAmending && !isFieldEditable);
+  const isEditable = isInReadOnlyMode && isFieldEditable;
+
+  // Get currency codes from symbol (e.g., "GBPUSD" -> ["GBP", "USD"])
+  const currentPair = currencyPairs.find((p) => p.symbol === symbol);
+  const ccy1 = currentPair?.base || "CCY1";
+  const ccy2 = currentPair?.quote || "CCY2";
 
   // Debounce validation trigger
   const debouncedValue = useDebounce(value, 300); // 300ms debounce for validation
 
   useEffect(() => {
-    if (debouncedValue !== undefined) {
-      validateField(fieldKey, debouncedValue);
-    }
+    // Validate even when value is undefined/null to catch required field errors
+    validateField(fieldKey, debouncedValue);
   }, [debouncedValue, fieldKey, validateField]);
 
   if (!def) return null;
@@ -44,6 +72,59 @@ const FieldController = ({ fieldKey }: { fieldKey: keyof OrderStateData }) => {
   let inputEl = null;
 
   switch (def.component) {
+    case "AmountWithCurrency":
+      inputEl = (
+        <AmountWithCurrency
+          id={fieldKey}
+          name={fieldKey}
+          value={value as number | undefined}
+          onChange={handleChange}
+          hasError={!!error}
+          readOnly={isReadOnly}
+          ccy1={ccy1}
+          ccy2={ccy2}
+        />
+      );
+      break;
+    case "LimitPriceWithCheckbox":
+      // Only use checkbox for FLOAT order type, otherwise use regular input
+      if (orderType === "FLOAT") {
+        inputEl = (
+          <LimitPriceWithCheckbox
+            id={fieldKey}
+            name={fieldKey}
+            value={value as number | undefined}
+            onChange={handleChange}
+            hasError={!!error}
+            readOnly={isReadOnly}
+            onGrabPrice={() => {
+              // Get the appropriate price based on direction from store
+              const buyPrice = useOrderEntryStore.getState().currentBuyPrice;
+              const sellPrice = useOrderEntryStore.getState().currentSellPrice;
+              return direction === "BUY" ? buyPrice : sellPrice;
+            }}
+          />
+        );
+      } else {
+        inputEl = (
+          <Input
+            id={fieldKey}
+            name={fieldKey}
+            data-testid={`input-${fieldKey}`}
+            type="number"
+            value={value !== undefined && value !== null ? value.toString() : ""}
+            onChange={(e) => {
+              const val = e.target.value;
+              handleChange(val === "" ? undefined : Number(val));
+            }}
+            hasError={!!error}
+            readOnly={isReadOnly}
+            step={0.0001}
+            placeholder="0.00000"
+          />
+        );
+      }
+      break;
     case "InputNumber":
       inputEl = (
         <Input
@@ -57,6 +138,7 @@ const FieldController = ({ fieldKey }: { fieldKey: keyof OrderStateData }) => {
             handleChange(val === "" ? undefined : Number(val));
           }}
           hasError={!!error}
+          readOnly={isReadOnly}
           {...def.props}
         />
       );
@@ -77,6 +159,7 @@ const FieldController = ({ fieldKey }: { fieldKey: keyof OrderStateData }) => {
           onChange={(e) => handleChange(e.target.value)}
           hasError={!!error}
           options={opts}
+          disabled={isReadOnly}
           {...def.props}
         />
       );
@@ -92,6 +175,7 @@ const FieldController = ({ fieldKey }: { fieldKey: keyof OrderStateData }) => {
           options={
             (def.props?.options as { label: string; value: string; variant?: string }[]) || []
           }
+          disabled={isReadOnly}
         />
       );
       break;
@@ -106,6 +190,7 @@ const FieldController = ({ fieldKey }: { fieldKey: keyof OrderStateData }) => {
           value={(value as string) || ""}
           onChange={(e) => handleChange(e.target.value)}
           hasError={!!error}
+          readOnly={isReadOnly}
           {...def.props}
         />
       );
@@ -118,6 +203,9 @@ const FieldController = ({ fieldKey }: { fieldKey: keyof OrderStateData }) => {
       isValidating={validating}
       fieldKey={fieldKey}
       isGroupField={def.component === "Toggle"}
+      rowIndex={rowIndex ?? 0}
+      isEditable={isEditable}
+      onDoubleClick={amendOrder}
     >
       {inputEl}
     </RowComponent>
@@ -125,8 +213,10 @@ const FieldController = ({ fieldKey }: { fieldKey: keyof OrderStateData }) => {
 };
 
 export const OrderForm = () => {
-  // Use shallow to prevent re-renders when other parts of derived values change
   const orderType = useOrderEntryStore((s) => s.getDerivedValues().orderType);
+  const status = useOrderEntryStore((s) => s.status);
+  const isReadOnly = status === "READ_ONLY";
+  const isAmending = status === "AMENDING";
   const config = ORDER_TYPES[orderType as keyof typeof ORDER_TYPES];
 
   // If order type is invalid or not loaded yet
@@ -135,7 +225,7 @@ export const OrderForm = () => {
   return (
     <div className={styles.container} data-testid="order-form">
       {/* Always show Order Type Selector first */}
-      <RowComponent label="Order Type" fieldKey="orderType">
+      <RowComponent label="Order Type" fieldKey="orderType" rowIndex={0}>
         <Select
           id="orderType"
           name="orderType"
@@ -148,12 +238,13 @@ export const OrderForm = () => {
             label: t,
             value: t,
           }))}
+          disabled={isReadOnly || isAmending}
         />
       </RowComponent>
 
       <div className={styles.grid} data-testid="order-form-fields">
-        {config.fields.map((fieldKey) => (
-          <FieldController key={fieldKey} fieldKey={fieldKey} />
+        {config.fields.map((fieldKey, index) => (
+          <FieldController key={fieldKey} fieldKey={fieldKey} rowIndex={index + 1} />
         ))}
       </div>
     </div>

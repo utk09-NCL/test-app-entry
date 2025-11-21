@@ -4,7 +4,7 @@ import { Account, CurrencyPair, LiquidityPool, OrderStateData } from "./domain";
 
 export interface AppSlice {
   instanceId: string;
-  status: "INITIALIZING" | "READY" | "SUBMITTING" | "READ_ONLY" | "ERROR";
+  status: "INITIALIZING" | "READY" | "SUBMITTING" | "READ_ONLY" | "ERROR" | "AMENDING";
   setStatus: (status: AppSlice["status"]) => void;
   toastMessage: { type: "success" | "error" | "info"; text: string } | null;
   setToast: (msg: { type: "success" | "error" | "info"; text: string } | null) => void;
@@ -62,9 +62,16 @@ export interface ComputedSlice {
   amendOrder: () => void;
 }
 
+export interface PriceSlice {
+  currentBuyPrice: number;
+  currentSellPrice: number;
+  setCurrentPrices: (buyPrice: number, sellPrice: number) => void;
+}
+
 // --- Combined Store Type ---
 export type BoundState = AppSlice &
   RefDataSlice &
   InitialOrderSlice &
   UserInteractionSlice &
-  ComputedSlice;
+  ComputedSlice &
+  PriceSlice;

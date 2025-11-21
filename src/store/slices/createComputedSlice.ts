@@ -72,20 +72,26 @@ export const createComputedSlice: StateCreator<
         }
       }
     } catch (e) {
-      console.error("Validation error:", e);
+      // Suppress Valibot console errors, we handle them via safeParse
+      // Only log unexpected errors
+      if (e && typeof e === "object" && "name" in e && e.name !== "ValiError") {
+        console.error("Validation error:", e);
+      }
     }
 
     // 2. Async Validation (Simulated Server Check)
     // Example: Check if price is within bands
     if (field === "limitPrice" || field === "notional") {
-      await new Promise((resolve) => setTimeout(resolve, 600)); // Simulate network
+      await new Promise((resolve) => setTimeout(resolve, 300)); // Simulate network
 
       // Check Race Condition
       if (get().validationRequestIds[field] !== currentId) return;
 
-      if (field === "notional" && Number(value) > 50000000) {
+      if (field === "notional" && value && Number(value) > 50000000) {
         set((state) => {
-          state.errors[field] = "Exceeds firm trading limit (Server)";
+          if (state.validationRequestIds[field] === currentId) {
+            state.errors[field] = "Exceeds firm trading limit (Server)";
+          }
         });
       }
     }
@@ -151,7 +157,7 @@ export const createComputedSlice: StateCreator<
 
   amendOrder: () => {
     set((state) => {
-      state.status = "READY";
+      state.status = "AMENDING";
       // dirtyValues are kept so user continues where they left off,
       // or we could reset them. Requirement says "make editable again".
     });

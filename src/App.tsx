@@ -1,7 +1,6 @@
 import { Spinner } from "./components/atoms/Spinner";
 import { OrderForm } from "./components/organisms/OrderForm";
 import { OrderHeader } from "./components/organisms/OrderHeader";
-import { ReadOnlyView } from "./components/organisms/ReadOnlyView";
 import { MainLayout } from "./components/templates/MainLayout";
 import { useAppInit } from "./hooks/useAppInit";
 import { useKeyboardHotkeys } from "./hooks/useKeyboardHotkeys";
@@ -16,6 +15,10 @@ function App() {
 
   const status = useOrderEntryStore((s) => s.status);
   const submitOrder = useOrderEntryStore((s) => s.submitOrder);
+  const amendOrder = useOrderEntryStore((s) => s.amendOrder);
+  const errors = useOrderEntryStore((s) => s.errors);
+  const serverErrors = useOrderEntryStore((s) => s.serverErrors);
+  const hasErrors = Object.keys(errors).length > 0 || Object.keys(serverErrors).length > 0;
 
   if (status === "INITIALIZING") {
     return (
@@ -30,25 +33,25 @@ function App() {
 
   return (
     <MainLayout>
-      {status === "READ_ONLY" ? (
-        <ReadOnlyView />
-      ) : (
-        <>
-          <OrderHeader />
-          <div className={styles.scrollArea}>
-            <OrderForm />
-          </div>
-          <div className={styles.footer}>
-            <button
-              onClick={() => submitOrder()}
-              disabled={status === "SUBMITTING"}
-              className={styles.submitBtn}
-            >
-              {status === "SUBMITTING" ? <Spinner size="md" /> : "SUBMIT ORDER"}
-            </button>
-          </div>
-        </>
-      )}
+      <OrderHeader />
+      <div className={styles.scrollArea}>
+        <OrderForm />
+      </div>
+      <div className={styles.footer}>
+        {status === "READ_ONLY" ? (
+          <button onClick={() => amendOrder()} className={styles.submitBtn}>
+            AMEND ORDER
+          </button>
+        ) : (
+          <button
+            onClick={() => submitOrder()}
+            disabled={status === "SUBMITTING" || hasErrors}
+            className={styles.submitBtn}
+          >
+            {status === "SUBMITTING" ? <Spinner size="md" /> : "SUBMIT ORDER"}
+          </button>
+        )}
+      </div>
     </MainLayout>
   );
 }

@@ -1,55 +1,43 @@
 @use "../../styles/variables" as *;
 
 .header {
-  background-color: $color-surface;
-  padding: 1rem;
-  border-bottom: 1px solid $color-border;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
+  padding: 1rem 1.5rem;
+  background: #111111;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .pairSelector {
-  width: 50%;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .label {
-  display: block;
-  font-size: 0.75rem;
-  color: $color-muted;
-  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: white;
+  margin: 0;
 }
 
 .selectOverride {
   font-weight: 700;
-  font-size: 1.125rem;
-  background-color: $color-surface;
-  border: none;
-  padding-left: 0;
+  font-size: 1rem;
+  background-color: #111111;
+  color: white;
+  border: 1px solid #333;
+  padding: 0.5rem;
+  border-radius: 4px;
 
   &:focus {
-    box-shadow: none;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
   }
-}
 
-.priceDisplay {
-  text-align: right;
-}
-
-.price {
-  font-size: 1.5rem;
-  font-family: $font-mono;
-  font-weight: 700;
-
-  &.buy {
-    color: $color-buy;
+  option {
+    background-color: #111111;
+    color: white;
   }
-  &.sell {
-    color: $color-sell;
-  }
-}
-
-.rateLabel {
-  font-size: 0.75rem;
-  color: $color-muted;
 }

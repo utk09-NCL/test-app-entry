@@ -16,7 +16,8 @@ export const mapContextToOrder = (context: unknown): Partial<OrderStateData> => 
   const partial: Partial<OrderStateData> = {};
 
   if (ctx.id && ctx.id.ticker) {
-    partial.symbol = ctx.id.ticker;
+    // Remove slash from symbol if present (e.g., "GBP/USD" -> "GBPUSD")
+    partial.symbol = ctx.id.ticker.replace(/\//g, "");
   }
 
   // Handling custom data often found in FDC3 intents for orders

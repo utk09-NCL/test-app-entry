@@ -3,7 +3,7 @@ import { StateCreator } from "zustand";
 import { BoundState, InitialOrderSlice } from "../../types/store";
 
 const DEFAULT_VALUES = {
-  symbol: "EUR/USD",
+  symbol: "GBPUSD",
   direction: "BUY" as const,
   orderType: "LIMIT" as const,
   timeInForce: "GTC" as const,

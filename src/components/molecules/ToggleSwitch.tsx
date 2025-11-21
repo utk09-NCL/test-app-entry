@@ -6,6 +6,7 @@ interface ToggleProps {
   options: { label: string; value: string; variant?: string }[];
   "data-testid"?: string;
   id?: string;
+  disabled?: boolean;
 }
 
 export const ToggleSwitch = ({
@@ -14,6 +15,7 @@ export const ToggleSwitch = ({
   options,
   "data-testid": testId,
   id,
+  disabled,
 }: ToggleProps) => {
   return (
     <div
@@ -30,7 +32,8 @@ export const ToggleSwitch = ({
             key={opt.value}
             type="button"
             data-testid={`${testId}-option-${opt.value}`}
-            onClick={() => onChange(opt.value)}
+            onClick={() => !disabled && onChange(opt.value)}
+            disabled={disabled}
             className={`${styles.button} ${isActive ? styles.active : ""} ${
               isActive && opt.variant ? styles[opt.variant] : ""
             }`}
