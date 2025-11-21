@@ -21,46 +21,13 @@
   overflow-y: auto;
 }
 
-.footer {
-  padding: 1rem;
-  border-top: 1px solid $color-border;
-  background-color: rgba($color-surface, 0.5);
-}
-
-.submitBtn {
-  width: 100%;
-  background-color: $color-primary;
-  color: $color-white;
-  font-weight: 700;
-  padding: 0.75rem 1rem;
-  border-radius: $radius-sm;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.2);
-
-  &:hover:not(:disabled) {
-    background-color: $color-primary-hover;
-  }
-
-  &:active:not(:disabled) {
-    transform: scale(0.95);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-}
-
 @keyframes pulse {
+
   0%,
   100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.5;
   }
