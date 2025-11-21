@@ -1,0 +1,55 @@
+@use "../../styles/variables" as *;
+
+.header {
+  background-color: $color-surface;
+  padding: 1rem;
+  border-bottom: 1px solid $color-border;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pairSelector {
+  width: 50%;
+}
+
+.label {
+  display: block;
+  font-size: 0.75rem;
+  color: $color-muted;
+  margin-bottom: 0.25rem;
+}
+
+.selectOverride {
+  font-weight: 700;
+  font-size: 1.125rem;
+  background-color: $color-surface;
+  border: none;
+  padding-left: 0;
+
+  &:focus {
+    box-shadow: none;
+  }
+}
+
+.priceDisplay {
+  text-align: right;
+}
+
+.price {
+  font-size: 1.5rem;
+  font-family: $font-mono;
+  font-weight: 700;
+
+  &.buy {
+    color: $color-buy;
+  }
+  &.sell {
+    color: $color-sell;
+  }
+}
+
+.rateLabel {
+  font-size: 0.75rem;
+  color: $color-muted;
+}

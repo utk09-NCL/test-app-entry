@@ -1,0 +1,19 @@
+@use "../../styles/variables" as *;
+
+.container {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.loading {
+  padding: 1rem;
+  color: $color-muted;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0 1rem;
+}

@@ -1,0 +1,50 @@
+@use "../../styles/variables" as *;
+
+.container {
+  position: relative;
+}
+
+.select {
+  width: 100%;
+  background-color: $color-bg;
+  border: 1px solid $color-border;
+  border-radius: $radius-sm;
+  padding: 0.5rem 0.75rem;
+  color: $color-text;
+  font-size: 0.875rem;
+  appearance: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 1px $color-primary;
+    border-color: $color-primary;
+  }
+
+  &:hover:not(:focus) {
+    border-color: adjust($color-border, 20%);
+  }
+
+  &.error {
+    border-color: $color-sell;
+  }
+}
+
+.iconWrapper {
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  color: $color-muted;
+}
+
+.icon {
+  height: 1rem;
+  width: 1rem;
+  fill: currentColor;
+}

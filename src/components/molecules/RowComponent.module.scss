@@ -1,0 +1,46 @@
+@use "../../styles/variables" as *;
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: $color-muted;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.content {
+  position: relative;
+}
+
+.error {
+  font-size: 0.75rem;
+  color: $color-sell;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.spacer {
+  height: 1rem;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
