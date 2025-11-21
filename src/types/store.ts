@@ -4,8 +4,10 @@ import { Account, CurrencyPair, LiquidityPool, OrderStateData } from "./domain";
 
 export interface AppSlice {
   instanceId: string;
-  status: "INITIALIZING" | "READY" | "SUBMITTING" | "READ_ONLY" | "ERROR" | "AMENDING";
+  status: "INITIALIZING" | "READY" | "SUBMITTING" | "ERROR";
+  editMode: "creating" | "viewing" | "amending";
   setStatus: (status: AppSlice["status"]) => void;
+  setEditMode: (mode: AppSlice["editMode"]) => void;
   toastMessage: { type: "success" | "error" | "info"; text: string } | null;
   setToast: (msg: { type: "success" | "error" | "info"; text: string } | null) => void;
 }

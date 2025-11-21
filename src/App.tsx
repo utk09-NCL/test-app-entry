@@ -14,6 +14,7 @@ function App() {
   useKeyboardHotkeys();
 
   const status = useOrderEntryStore((s) => s.status);
+  const editMode = useOrderEntryStore((s) => s.editMode);
   const submitOrder = useOrderEntryStore((s) => s.submitOrder);
   const amendOrder = useOrderEntryStore((s) => s.amendOrder);
   const errors = useOrderEntryStore((s) => s.errors);
@@ -38,7 +39,7 @@ function App() {
         <OrderForm />
       </div>
       <div className={styles.footer}>
-        {status === "READ_ONLY" ? (
+        {editMode === "viewing" ? (
           <button onClick={() => amendOrder()} className={styles.submitBtn}>
             AMEND ORDER
           </button>

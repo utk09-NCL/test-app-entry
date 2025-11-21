@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
+import { AMOUNT_CONFIG } from "../../config/constants";
 import { Input } from "../atoms/Input";
 
 import styles from "./AmountWithCurrency.module.scss";
@@ -25,23 +26,26 @@ export const AmountWithCurrency = ({
   id,
   name,
 }: AmountWithCurrencyProps) => {
-  const [selectedCurrency, setSelectedCurrency] = useState<string>(ccy1);
+  // Initialize with ccy1, reset if currencies change and current selection is invalid
+  const [selectedCurrency, setSelectedCurrency] = useState<string>(() => ccy1);
 
   console.log("[AmountWithCurrency] Render:", { ccy1, ccy2, selectedCurrency, value });
 
-  // Update selected currency when ccy1/ccy2 props change
-  useEffect(() => {
-    console.log("[AmountWithCurrency] useEffect triggered:", { ccy1, ccy2, selectedCurrency });
-    if (selectedCurrency !== ccy1 && selectedCurrency !== ccy2) {
-      console.log("[AmountWithCurrency] Resetting to ccy1:", ccy1);
-      setSelectedCurrency(ccy1);
-    }
-  }, [ccy1, ccy2, selectedCurrency]);
+  // Reset to ccy1 if current selection is no longer valid
+  // This uses derived state pattern instead of useEffect to avoid cascading renders
+  const validCurrency =
+    selectedCurrency === ccy1 || selectedCurrency === ccy2 ? selectedCurrency : ccy1;
+
+  // If we need to update because of invalid state, do it during render
+  if (validCurrency !== selectedCurrency) {
+    console.log("[AmountWithCurrency] Resetting to valid currency:", validCurrency);
+    setSelectedCurrency(validCurrency);
+  }
 
   const handleCurrencyToggle = () => {
-    const newCurrency = selectedCurrency === ccy1 ? ccy2 : ccy1;
+    const newCurrency = validCurrency === ccy1 ? ccy2 : ccy1;
     console.log("[AmountWithCurrency] Toggle clicked:", {
-      from: selectedCurrency,
+      from: validCurrency,
       to: newCurrency,
     });
     setSelectedCurrency(newCurrency);
@@ -55,9 +59,9 @@ export const AmountWithCurrency = ({
         onClick={handleCurrencyToggle}
         disabled={readOnly}
         data-testid="currency-toggle"
-        aria-label={`Toggle currency (current: ${selectedCurrency})`}
+        aria-label={`Toggle currency (current: ${validCurrency})`}
       >
-        {selectedCurrency}
+        {validCurrency}
       </button>
       <Input
         id={id || "amount"}
@@ -70,9 +74,9 @@ export const AmountWithCurrency = ({
         }}
         hasError={hasError || false}
         readOnly={readOnly}
-        min={1000}
-        step={100000}
-        placeholder="1,000,000"
+        min={AMOUNT_CONFIG.MIN_AMOUNT}
+        step={AMOUNT_CONFIG.STEP_AMOUNT}
+        placeholder={AMOUNT_CONFIG.DEFAULT_PLACEHOLDER}
         data-testid="amount-input"
       />
     </div>

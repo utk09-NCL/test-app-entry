@@ -1,15 +1,17 @@
 import * as v from "valibot";
 
+import { NOTIONAL_LIMITS, PRICE_CONFIG } from "./constants";
+
 // Common schemas
 const notionalSchema = v.pipe(
   v.number("Amount must be a number"),
-  v.minValue(1, "Minimum amount is 1"),
-  v.maxValue(1_000_000_000, "Amount exceeds pool limit")
+  v.minValue(NOTIONAL_LIMITS.MIN, "Minimum amount is 1"),
+  v.maxValue(NOTIONAL_LIMITS.MAX, "Amount exceeds pool limit")
 );
 
 const priceSchema = v.pipe(
   v.number("Price must be a number"),
-  v.minValue(0.00001, "Price must be positive")
+  v.minValue(PRICE_CONFIG.MIN_VALID_PRICE, "Price must be positive")
 );
 
 const requiredString = v.pipe(v.string("Required"), v.minLength(1, "Required"));

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { PRICE_CONFIG } from "../../config/constants";
 import { useOrderEntryStore } from "../../store";
 
 import styles from "./TickingPrice.module.scss";
@@ -14,8 +15,8 @@ export interface PriceData {
 }
 
 export const TickingPrice = ({ symbol }: TickingPriceProps) => {
-  const [buyPrice, setBuyPrice] = useState(1.27345);
-  const [sellPrice, setSellPrice] = useState(1.27115);
+  const [buyPrice, setBuyPrice] = useState<number>(PRICE_CONFIG.INITIAL_BUY_PRICE);
+  const [sellPrice, setSellPrice] = useState<number>(PRICE_CONFIG.INITIAL_SELL_PRICE);
   const [buyIsUp, setBuyIsUp] = useState(true);
   const [sellIsUp, setSellIsUp] = useState(true);
   const setCurrentPrices = useOrderEntryStore((s) => s.setCurrentPrices);
@@ -24,19 +25,19 @@ export const TickingPrice = ({ symbol }: TickingPriceProps) => {
     // Simulate price ticking for both buy and sell
     const interval = setInterval(() => {
       setBuyPrice((prev) => {
-        const change = (Math.random() - 0.5) * 0.0002;
+        const change = (Math.random() - 0.5) * PRICE_CONFIG.MAX_PRICE_CHANGE;
         const newPrice = prev + change;
         setBuyIsUp(change > 0);
-        return Math.max(0.5, Math.min(2.0, newPrice));
+        return Math.max(PRICE_CONFIG.MIN_PRICE, Math.min(PRICE_CONFIG.MAX_PRICE, newPrice));
       });
 
       setSellPrice((prev) => {
-        const change = (Math.random() - 0.5) * 0.0002;
+        const change = (Math.random() - 0.5) * PRICE_CONFIG.MAX_PRICE_CHANGE;
         const newPrice = prev + change;
         setSellIsUp(change > 0);
-        return Math.max(0.5, Math.min(2.0, newPrice));
+        return Math.max(PRICE_CONFIG.MIN_PRICE, Math.min(PRICE_CONFIG.MAX_PRICE, newPrice));
       });
-    }, 1000);
+    }, PRICE_CONFIG.TICK_INTERVAL_MS);
 
     return () => clearInterval(interval);
   }, [symbol]);
@@ -46,8 +47,8 @@ export const TickingPrice = ({ symbol }: TickingPriceProps) => {
     setCurrentPrices(buyPrice, sellPrice);
   }, [buyPrice, sellPrice, setCurrentPrices]);
 
-  const formattedBuyPrice = buyPrice.toFixed(5);
-  const formattedSellPrice = sellPrice.toFixed(5);
+  const formattedBuyPrice = buyPrice.toFixed(PRICE_CONFIG.PRICE_DECIMALS);
+  const formattedSellPrice = sellPrice.toFixed(PRICE_CONFIG.PRICE_DECIMALS);
 
   return (
     <div className={styles.container}>

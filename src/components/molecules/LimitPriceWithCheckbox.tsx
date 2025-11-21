@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { PRICE_CONFIG } from "../../config/constants";
+import { useOrderEntryStore } from "../../store";
 import { Input } from "../atoms/Input";
 
 import styles from "./LimitPriceWithCheckbox.module.scss";
@@ -11,7 +13,7 @@ interface LimitPriceWithCheckboxProps {
   readOnly?: boolean;
   id?: string;
   name?: string;
-  onGrabPrice?: () => number;
+  direction?: string; // Track direction for re-grab
 }
 
 export const LimitPriceWithCheckbox = ({
@@ -21,14 +23,24 @@ export const LimitPriceWithCheckbox = ({
   readOnly,
   id,
   name,
-  onGrabPrice,
+  direction,
 }: LimitPriceWithCheckboxProps) => {
   const [autoGrab, setAutoGrab] = useState(false);
+  const currentBuyPrice = useOrderEntryStore((s) => s.currentBuyPrice);
+  const currentSellPrice = useOrderEntryStore((s) => s.currentSellPrice);
+
+  // Re-grab price when direction changes while checkbox is checked
+  useEffect(() => {
+    if (autoGrab && direction) {
+      const price = direction === "BUY" ? currentBuyPrice : currentSellPrice;
+      onChange(price);
+    }
+  }, [direction, autoGrab, currentBuyPrice, currentSellPrice, onChange]);
 
   const handleCheckboxChange = (checked: boolean) => {
     setAutoGrab(checked);
-    if (checked && onGrabPrice) {
-      const price = onGrabPrice();
+    if (checked && direction) {
+      const price = direction === "BUY" ? currentBuyPrice : currentSellPrice;
       onChange(price);
     }
   };
@@ -57,7 +69,7 @@ export const LimitPriceWithCheckbox = ({
         }}
         hasError={hasError || false}
         readOnly={readOnly || autoGrab}
-        step={0.0001}
+        step={PRICE_CONFIG.PRICE_STEP}
         placeholder="0.00000"
         data-testid="limit-price-input"
       />

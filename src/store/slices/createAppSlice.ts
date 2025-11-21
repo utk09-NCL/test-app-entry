@@ -8,10 +8,15 @@ export const createAppSlice: StateCreator<BoundState, [["zustand/immer", never]]
 ) => ({
   instanceId: generateId(),
   status: "INITIALIZING",
+  editMode: "creating",
   toastMessage: null,
   setStatus: (status) =>
     set((state) => {
       state.status = status;
+    }),
+  setEditMode: (mode) =>
+    set((state) => {
+      state.editMode = mode;
     }),
   setToast: (msg) =>
     set((state) => {

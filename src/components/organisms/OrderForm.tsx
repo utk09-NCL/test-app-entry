@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 
+import { VALIDATION_CONFIG } from "../../config/constants";
 import { FIELD_REGISTRY } from "../../config/fieldRegistry";
 import { ORDER_TYPES } from "../../config/orderConfig";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -26,7 +27,7 @@ const FieldController = ({
   const value = useOrderEntryStore((s) => s.getDerivedValues()[fieldKey]);
   const error = useOrderEntryStore((s) => s.errors[fieldKey]);
   const validating = useOrderEntryStore((s) => s.isValidating[fieldKey]);
-  const status = useOrderEntryStore((s) => s.status);
+  const editMode = useOrderEntryStore((s) => s.editMode);
   const symbol = useOrderEntryStore((s) => s.getDerivedValues().symbol);
   const direction = useOrderEntryStore((s) => s.getDerivedValues().direction);
   const orderType = useOrderEntryStore((s) => s.getDerivedValues().orderType);
@@ -42,15 +43,13 @@ const FieldController = ({
 
   const def = FIELD_REGISTRY[fieldKey];
   const config = ORDER_TYPES[orderType as keyof typeof ORDER_TYPES];
-  const isInReadOnlyMode = status === "READ_ONLY";
-  const isAmending = status === "AMENDING";
   const isFieldEditable = config?.editableFields.includes(fieldKey);
 
   // Field is read-only if:
-  // - In READ_ONLY status (after submit, before amend clicked)
-  // - OR in AMENDING status but field is not in editableFields list
-  const isReadOnly = isInReadOnlyMode || (isAmending && !isFieldEditable);
-  const isEditable = isInReadOnlyMode && isFieldEditable;
+  // - In viewing mode (after submit, before amend clicked)
+  // - OR in amending mode but field is not in editableFields list
+  const isReadOnly = editMode === "viewing" || (editMode === "amending" && !isFieldEditable);
+  const isEditable = editMode === "viewing" && isFieldEditable;
 
   // Get currency codes from symbol (e.g., "GBPUSD" -> ["GBP", "USD"])
   const currentPair = currencyPairs.find((p) => p.symbol === symbol);
@@ -58,7 +57,7 @@ const FieldController = ({
   const ccy2 = currentPair?.quote || "CCY2";
 
   // Debounce validation trigger
-  const debouncedValue = useDebounce(value, 300); // 300ms debounce for validation
+  const debouncedValue = useDebounce(value, VALIDATION_CONFIG.DEBOUNCE_MS);
 
   useEffect(() => {
     // Validate even when value is undefined/null to catch required field errors
@@ -97,12 +96,7 @@ const FieldController = ({
             onChange={handleChange}
             hasError={!!error}
             readOnly={isReadOnly}
-            onGrabPrice={() => {
-              // Get the appropriate price based on direction from store
-              const buyPrice = useOrderEntryStore.getState().currentBuyPrice;
-              const sellPrice = useOrderEntryStore.getState().currentSellPrice;
-              return direction === "BUY" ? buyPrice : sellPrice;
-            }}
+            direction={direction}
           />
         );
       } else {
@@ -214,9 +208,8 @@ const FieldController = ({
 
 export const OrderForm = () => {
   const orderType = useOrderEntryStore((s) => s.getDerivedValues().orderType);
-  const status = useOrderEntryStore((s) => s.status);
-  const isReadOnly = status === "READ_ONLY";
-  const isAmending = status === "AMENDING";
+  const editMode = useOrderEntryStore((s) => s.editMode);
+  const isReadOnly = editMode === "viewing" || editMode === "amending";
   const config = ORDER_TYPES[orderType as keyof typeof ORDER_TYPES];
 
   // If order type is invalid or not loaded yet
@@ -238,7 +231,7 @@ export const OrderForm = () => {
             label: t,
             value: t,
           }))}
-          disabled={isReadOnly || isAmending}
+          disabled={isReadOnly}
         />
       </RowComponent>
 
