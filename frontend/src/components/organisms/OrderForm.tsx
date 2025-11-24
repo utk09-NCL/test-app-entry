@@ -54,7 +54,7 @@ export const OrderForm = () => {
   if (!config) return <div className={styles.loading}>Loading Order Config...</div>;
 
   return (
-    <div className={styles.container} data-testid="order-form">
+    <div className={styles.container} data-testid="order-form" data-app-state={editMode}>
       {/* Order Type Selector - Always shown first */}
       {/* When user changes this, the entire form re-renders with new fields */}
       <RowComponent label="Order Type" fieldKey="orderType" rowIndex={0}>

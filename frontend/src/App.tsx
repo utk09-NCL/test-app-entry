@@ -60,7 +60,7 @@ function App() {
   return (
     <MainLayout>
       <OrderHeader />
-      <div className={styles.scrollArea}>
+      <div className={styles.scrollArea} data-testid="order-form-entry">
         <OrderForm />
       </div>
     </MainLayout>

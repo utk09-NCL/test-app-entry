@@ -39,7 +39,7 @@ export const MainLayout = ({ children }: Props) => {
   return (
     <div className={styles.layout} data-testid="main-layout">
       {/* Card container - centered, shadowed, white background */}
-      <div className={styles.card}>
+      <div className={styles.card} data-testid="main-layout-card">
         {/* Page content (OrderHeader + OrderForm) */}
         {children}
 

@@ -96,7 +96,7 @@ export const TickingPrice = ({ symbol }: TickingPriceProps) => {
   return (
     <div className={styles.container} data-testid="ticking-price">
       {/* BUY price box */}
-      <div className={styles.priceBox}>
+      <div className={styles.priceBox} data-testid="top-of-book-buy-price">
         <div className={styles.label}>BUY</div>
         {/* Apply green/red styling based on price direction */}
         <div className={`${styles.price} ${buyIsUp ? styles.up : styles.down}`}>
@@ -107,7 +107,7 @@ export const TickingPrice = ({ symbol }: TickingPriceProps) => {
       {/* // TODO: Replace with a verical separator */}
       <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
       {/* SELL price box */}
-      <div className={styles.priceBox}>
+      <div className={styles.priceBox} data-testid="top-of-book-sell-price">
         <div className={styles.label}>SELL</div>
         <div className={`${styles.price} ${sellIsUp ? styles.up : styles.down}`}>
           {formattedSellPrice}
