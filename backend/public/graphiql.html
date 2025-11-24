@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GraphiQL</title>
+    <style>
+      :root {
+        --bg: #0f172a;
+        --tab-bg: #111827;
+        --tab-active: #1f2937;
+        --tab-text: #e5e7eb;
+        --accent: #34d399;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+          Ubuntu, Cantarell, "Helvetica Neue", Arial;
+        background: var(--bg);
+        color: var(--tab-text);
+      }
+      #shell {
+        display: grid;
+        grid-template-rows: auto 1fr;
+        height: 100dvh;
+      }
+      .tabs {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        padding: 8px;
+        background: var(--tab-bg);
+        border-bottom: 1px solid #374151;
+        flex-wrap: wrap;
+      }
+      .tabs button {
+        background: transparent;
+        color: var(--tab-text);
+        border: 1px solid #374151;
+        padding: 6px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+      .tabs button.active {
+        background: var(--tab-active);
+        border-color: var(--accent);
+        color: white;
+      }
+      .tabs .right {
+        margin-left: auto;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      #graphiql {
+        height: calc(100dvh - 49px);
+      }
+      .loading {
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+      }
+      .hint {
+        opacity: 0.8;
+        font-size: 12px;
+      }
+    </style>
+    <link rel="stylesheet" href="https://esm.sh/graphiql/dist/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://esm.sh/@graphiql/plugin-explorer/dist/style.css"
+    />
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://esm.sh/react@19.1.0",
+          "react/": "https://esm.sh/react@19.1.0/",
+          "react-dom": "https://esm.sh/react-dom@19.1.0",
+          "react-dom/": "https://esm.sh/react-dom@19.1.0/",
+
+          "graphiql": "https://esm.sh/graphiql?standalone&external=react,react-dom,@graphiql/react,graphql",
+          "graphiql/": "https://esm.sh/graphiql/",
+          "@graphiql/plugin-explorer": "https://esm.sh/@graphiql/plugin-explorer?standalone&external=react,@graphiql/react,graphql",
+          "@graphiql/react": "https://esm.sh/@graphiql/react?standalone&external=react,react-dom,graphql,@graphiql/toolkit,@emotion/is-prop-valid",
+          "@graphiql/toolkit": "https://esm.sh/@graphiql/toolkit?standalone&external=graphql",
+
+          "graphql": "https://esm.sh/graphql@16.11.0",
+          "graphql-ws": "https://esm.sh/graphql-ws@6.0.6",
+          "@emotion/is-prop-valid": "data:text/javascript,"
+        }
+      }
+    </script>
+    <script type="module">
+      import React from "react";
+      import ReactDOM from "react-dom/client";
+      import { GraphiQL, HISTORY_PLUGIN } from "graphiql";
+      import { useGraphiQL } from "@graphiql/react";
+      import { createGraphiQLFetcher } from "@graphiql/toolkit";
+      import { explorerPlugin } from "@graphiql/plugin-explorer";
+      import { createClient } from "graphql-ws";
+      import "graphiql/setup-workers/esm.sh";
+
+      const fetcher = createGraphiQLFetcher({
+        url: "http://localhost:4000/graphql",
+        wsClient: createClient({ url: "ws://localhost:4000/graphql" }),
+      });
+
+      const plugins = [HISTORY_PLUGIN, explorerPlugin()];
+
+      const tabs = [
+        {
+          id: "q-accounts",
+          label: "Accounts",
+          query: `query Accounts {\n  accounts { sdsId name }\n}`,
+        },
+        {
+          id: "q-currencyPairs",
+          label: "Currency Pairs",
+          query: `query CurrencyPairs {\n  currencyPairs { id symbol ccy1 ccy2 spotPrecision defaultTenor }\n}`,
+        },
+        {
+          id: "q-currencyPair",
+          label: "Pair Detail",
+          query: `query Pair($id: ID!) {\n  currencyPair(currencyPairId: $id) {\n    id\n    tenorInfos { tenorCode valueDate }\n  }\n}`,
+          variables: `{"id":"EURUSD_false_true_false_true"}`,
+        },
+        {
+          id: "q-orderTypes",
+          label: "Order Types + Pools",
+          query: `query OrderTypesWithPools {\n  orderTypesWithPools {\n    name\n    orderType\n    liquidityPools { name value }\n    fixingCombinations { fixingName fixingId fixingTime fixingTimezone }\n  }\n}`,
+        },
+        {
+          id: "m-createOrder",
+          label: "Create Order (LIMIT)",
+          query: `mutation CreateOrder {\n  createOrder(orderEntry: {\n    currencyPair: "EURUSD"\n    side: BUY\n    orderType: LIMIT\n    amount: 1000000\n    ccy: "USD"\n    limitPrice: 1.1\n    liquidityPool: "GATOR_POOL_1"\n    account: "1"\n    timeInForce: GTC\n  }) {\n    orderId\n    result\n    failureReason\n  }\n}`,
+        },
+        {
+          id: "s-gatorData",
+          label: "Sub: gatorData",
+          query: `subscription Gator {\n  gatorData(subscription: { currencyPair: "EURUSD", pipSteps: 1, pipExtent: 1 }) {\n    topOfTheBookBuy { price precisionValue }\n    topOfTheBookSell { price precisionValue }\n  }\n}`,
+        },
+        {
+          id: "s-orderData",
+          label: "Sub: orderData",
+          query: `subscription Order($orderId: ID!) {\n  orderData(orderId: $orderId) {\n    orderId\n    order { currencyPair side orderType amount { amount ccy } }\n    execution { status averageFillRate filled { amount ccy } }\n  }\n}`,
+          variables: `{"orderId":"REPLACE_WITH_ORDER_ID"}`,
+        },
+        {
+          id: "m-prefs",
+          label: "Set Default Account",
+          query: `mutation SetPref {\n  mutateGlobalUserPreferences(updateGlobalUserPreferenceRequest: { defaultGlobalAccount: "1" }) {\n    defaultGlobalAccount { sdsId name }\n  }\n}`,
+        },
+        {
+          id: "m-cancelInstrument",
+          label: "Cancel Instrument",
+          query: `mutation CancelInstrument {\n  cancelInstrumentAction(ccyPair: { symbol: "EURUSD", onshore: false, deliverable: true }) {\n    userId\n    result\n    failureReason\n  }\n}`,
+        },
+      ];
+
+      function EditorController({ active }) {
+        const queryEditor = useGraphiQL((s) => s.queryEditor);
+        const variableEditor = useGraphiQL((s) => s.variableEditor);
+        React.useEffect(() => {
+          queryEditor?.setValue(active.query ?? "");
+          if (active.variables !== undefined) {
+            variableEditor?.setValue(active.variables);
+          } else {
+            variableEditor?.setValue("");
+          }
+        }, [active, queryEditor, variableEditor]);
+        return null;
+      }
+
+      function App() {
+        const [activeId, setActiveId] = React.useState(tabs[0].id);
+        const active = tabs.find((t) => t.id === activeId) ?? tabs[0];
+
+        return React.createElement(
+          React.Fragment,
+          null,
+          React.createElement(
+            "div",
+            { className: "tabs" },
+            tabs.map((t) =>
+              React.createElement(
+                "button",
+                {
+                  key: t.id,
+                  className: t.id === activeId ? "active" : "",
+                  onClick: () => setActiveId(t.id),
+                },
+                t.label
+              )
+            ),
+            React.createElement(
+              "div",
+              { className: "right hint" },
+              "Prebuilt tabs for quick testing"
+            )
+          ),
+          React.createElement(
+            GraphiQL,
+            {
+              fetcher,
+              plugins,
+              defaultEditorToolsVisibility: true,
+              initialQuery: tabs[0].query,
+              initialVariables: tabs[0].variables ?? "",
+            },
+            React.createElement(EditorController, { active })
+          )
+        );
+      }
+
+      const shell = document.getElementById("shell");
+      const root = ReactDOM.createRoot(shell);
+      root.render(React.createElement(App));
+    </script>
+  </head>
+  <body>
+    <div id="shell">
+      <div class="tabs">
+        <span class="hint">Loading…</span>
+      </div>
+      <div id="graphiql">
+        <div class="loading">Loading…</div>
+      </div>
+    </div>
+  </body>
+</html>

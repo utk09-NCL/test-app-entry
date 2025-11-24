@@ -1,0 +1,78 @@
+[
+  {
+    "name": "Limit Order",
+    "orderType": "LIMIT",
+    "fixingCombinations": [],
+    "liquidityPools": [
+      {
+        "name": "Gator Liquid",
+        "value": "GATOR_POOL_1"
+      },
+      {
+        "name": "External Agg 1",
+        "value": "EXT_POOL_A"
+      }
+    ]
+  },
+  {
+    "name": "Market Order",
+    "orderType": "MARKET",
+    "fixingCombinations": [],
+    "liquidityPools": [
+      {
+        "name": "Gator Liquid",
+        "value": "GATOR_POOL_1"
+      },
+      {
+        "name": "External Agg 1",
+        "value": "EXT_POOL_A"
+      }
+    ]
+  },
+  {
+    "name": "Take Profit",
+    "orderType": "TAKE_PROFIT",
+    "fixingCombinations": [
+      {
+        "fixingName": "London 4PM",
+        "fixingTime": "16:00",
+        "fixingTimezone": "Europe/London",
+        "fixingId": "FIX-LON-4PM"
+      },
+      {
+        "fixingName": "NY 10AM",
+        "fixingTime": "10:00",
+        "fixingTimezone": "America/New_York",
+        "fixingId": "FIX-NY-10AM"
+      }
+    ],
+    "liquidityPools": [
+      {
+        "name": "Gator Liquid",
+        "value": "GATOR_POOL_1"
+      }
+    ]
+  },
+  {
+    "name": "Stop Loss",
+    "orderType": "STOP_LOSS",
+    "fixingCombinations": [],
+    "liquidityPools": [
+      {
+        "name": "Gator Liquid",
+        "value": "GATOR_POOL_1"
+      }
+    ]
+  },
+  {
+    "name": "Float Order",
+    "orderType": "FLOAT",
+    "fixingCombinations": [],
+    "liquidityPools": [
+      {
+        "name": "Float Pool",
+        "value": "FLOAT_POOL"
+      }
+    ]
+  }
+]

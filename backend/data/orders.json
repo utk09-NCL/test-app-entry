@@ -1,0 +1,34 @@
+{
+  "28db1315-c4b2-468d-a563-e7458e1d0d28": {
+    "orderId": "28db1315-c4b2-468d-a563-e7458e1d0d28",
+    "omsOrderId": "OMS-28db1315",
+    "order": {
+      "currencyPair": "EURUSD",
+      "side": "BUY",
+      "orderType": "LIMIT",
+      "amount": {
+        "amount": 1000000,
+        "ccy": "USD"
+      },
+      "ccy": "USD",
+      "limitPrice": 1.1,
+      "liquidityPool": "GATOR_POOL_1",
+      "account": {
+        "sdsId": "1",
+        "name": "Account Name"
+      },
+      "timeInForce": "GTC"
+    },
+    "execution": {
+      "agent": "GATOR",
+      "averageFillRate": 0,
+      "filled": {
+        "amount": 100000,
+        "ccy": "USD"
+      },
+      "status": "PARTIALLY_FILLED",
+      "targetEndTime": null
+    },
+    "createdAt": "2025-11-24T16:44:32.632Z"
+  }
+}
