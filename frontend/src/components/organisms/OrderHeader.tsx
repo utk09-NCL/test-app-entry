@@ -18,6 +18,7 @@
  */
 
 import clsx from "clsx";
+
 import { useOrderEntryStore } from "../../store";
 import { Select } from "../atoms/Select";
 import { TickingPrice } from "../molecules/TickingPrice";

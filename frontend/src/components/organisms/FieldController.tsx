@@ -218,8 +218,9 @@ export const FieldController = ({ fieldKey, rowIndex }: FieldControllerProps) =>
 
       // Dynamic Option Loading: Replace with data from store
       // This allows dropdowns to be populated from server data
-      if (fieldKey === "account") opts = accounts.map((a) => ({ label: a.name, value: a.id }));
-      if (fieldKey === "liquidityPool") opts = pools.map((p) => ({ label: p.name, value: p.id }));
+      if (fieldKey === "account") opts = accounts.map((a) => ({ label: a.name, value: a.sdsId }));
+      if (fieldKey === "liquidityPool")
+        opts = pools.map((p) => ({ label: p.name, value: p.value }));
 
       inputEl = (
         <Select

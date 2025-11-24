@@ -1,6 +1,6 @@
-// TODO: Wrap using gql from src/__generated__ by adding codegen step in postinstall
+import { gql } from "@apollo/client";
 
-export const ACCOUNTS_QUERY = `
+export const ACCOUNTS_QUERY = gql`
   query Accounts {
     accounts {
       sdsId
@@ -9,7 +9,7 @@ export const ACCOUNTS_QUERY = `
   }
 `;
 
-export const CCY_STATIC_QUERY = `
+export const CCY_STATIC_QUERY = gql`
   query getCcyStatic($orderType: OrderType) {
     currencyPairs(orderType: $orderType) {
       id
@@ -33,7 +33,7 @@ export const CCY_STATIC_QUERY = `
   }
 `;
 
-export const ORDER_TYPES_LIQUIDITY_POOLS_QUERY = `
+export const ORDER_TYPES_LIQUIDITY_POOLS_QUERY = gql`
   query OrderTypeLiquidity {
     orderTypesWithPools {
       name
@@ -52,7 +52,7 @@ export const ORDER_TYPES_LIQUIDITY_POOLS_QUERY = `
   }
 `;
 
-export const CURRENCY_PAIR_INFO_QUERY = `
+export const CURRENCY_PAIR_INFO_QUERY = gql`
   query getCurrencyPairInfo($currencyPairId: ID!) {
     currencyPair(currencyPairId: $currencyPairId) {
       id

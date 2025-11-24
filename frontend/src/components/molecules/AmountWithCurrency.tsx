@@ -63,8 +63,6 @@ export const AmountWithCurrency = ({
   // Initialize with ccy1 (base currency)
   const [selectedCurrency, setSelectedCurrency] = useState<string>(() => ccy1);
 
-  console.log("[AmountWithCurrency] Render:", { ccy1, ccy2, selectedCurrency, value });
-
   // Validate that selected currency is still valid (in case symbol changed)
   // This uses derived state pattern instead of useEffect to avoid cascading renders
   const validCurrency =

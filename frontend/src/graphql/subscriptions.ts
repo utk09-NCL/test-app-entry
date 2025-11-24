@@ -1,6 +1,6 @@
-// TODO: Wrap using gql from src/__generated__ by adding codegen step in postinstall
+import { gql } from "@apollo/client";
 
-export const ORDER_SUBSCRIPTION = `
+export const ORDER_SUBSCRIPTION = gql`
   subscription OrderSubscription($orderId: ID!) {
     orderData(orderId: $orderId) {
       orderId
@@ -55,7 +55,7 @@ export const ORDER_SUBSCRIPTION = `
   }
 `;
 
-export const ORDER_FAILURE_SUBSCRIPTION = `
+export const ORDER_FAILURE_SUBSCRIPTION = gql`
   subscription OrderFailure($orderId: ID!) {
     orderFailure(orderId: $orderId) {
       description
@@ -65,7 +65,7 @@ export const ORDER_FAILURE_SUBSCRIPTION = `
   }
 `;
 
-export const GATOR_DATA_SUBSCRIPTION = `
+export const GATOR_DATA_SUBSCRIPTION = gql`
   subscription GatorSubscription($input: GatorSubscription) {
     gatorData(subscription: $input) {
       topOfTheBookBuy {
@@ -80,10 +80,13 @@ export const GATOR_DATA_SUBSCRIPTION = `
   }
 `;
 
-export const GLOBAL_USER_PREFERENCES_SUBSCRIPTION = `
+export const GLOBAL_USER_PREFERENCES_SUBSCRIPTION = gql`
   subscription globalUserPreferencesStream {
     globalUserPreferencesStream {
-      defaultGlobalAccount
+      defaultGlobalAccount {
+        sdsId
+        name
+      }
     }
   }
 `;

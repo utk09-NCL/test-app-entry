@@ -8,6 +8,9 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   resolve: {},
+  optimizeDeps: {
+    include: ["tslib", "@apollo/client", "graphql-ws"],
+  },
   plugins: [
     react(),
     visualizer({

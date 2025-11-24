@@ -16,12 +16,19 @@
  * - Uses Zustand store with "Layered State" pattern (baseValues + dirtyValues)
  * - Status determines which view to show
  * - All business logic is handled in store slices, not in components
+ *
+ * GraphQL Integration:
+ * - ApolloProvider wraps the entire app to provide GraphQL client context
+ * - All queries/mutations/subscriptions use the configured Apollo client
  */
+
+import { ApolloProvider } from "@apollo/client";
 
 import { Spinner } from "./components/atoms/Spinner";
 import { OrderForm } from "./components/organisms/OrderForm";
 import { OrderHeader } from "./components/organisms/OrderHeader";
 import { MainLayout } from "./components/templates/MainLayout";
+import { graphqlClient } from "./graphql/client";
 import { useAppInit } from "./hooks/useAppInit";
 import { useKeyboardHotkeys } from "./hooks/useKeyboardHotkeys";
 import { useOrderEntryStore } from "./store";
@@ -67,4 +74,10 @@ function App() {
   );
 }
 
-export default App;
+export default function AppWithProviders() {
+  return (
+    <ApolloProvider client={graphqlClient}>
+      <App />
+    </ApolloProvider>
+  );
+}

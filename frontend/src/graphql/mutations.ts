@@ -1,6 +1,6 @@
-// TODO: Wrap using gql from src/__generated__ by adding codegen step in postinstall
+import { gql } from "@apollo/client";
 
-export const CREATE_ORDER_MUTATION = `
+export const CREATE_ORDER_MUTATION = gql`
   mutation createOrder($orderEntry: OrderEntry!) {
     createOrder(orderEntry: $orderEntry) {
       orderId
@@ -10,7 +10,7 @@ export const CREATE_ORDER_MUTATION = `
   }
 `;
 
-export const AMEND_ORDER_MUTATION = `
+export const AMEND_ORDER_MUTATION = gql`
   mutation AmendOrder($amendOrder: AmendOrder!) {
     amendOrder(amendOrder: $amendOrder) {
       orderId
@@ -20,10 +20,17 @@ export const AMEND_ORDER_MUTATION = `
   }
 `;
 
-export const GLOBAL_USER_PREFERENCE_MUTATION = `
-  mutation mutateGlobalUserPreferences($updateGlobalUserPreferenceRequest: UpdateGlobalUserPreferenceRequest!) {
-    mutateGlobalUserPreferences(updateGlobalUserPreferenceRequest: $updateGlobalUserPreferenceRequest) {
-      defaultGlobalAccount
+export const GLOBAL_USER_PREFERENCE_MUTATION = gql`
+  mutation mutateGlobalUserPreferences(
+    $updateGlobalUserPreferenceRequest: UpdateGlobalUserPreferenceRequest!
+  ) {
+    mutateGlobalUserPreferences(
+      updateGlobalUserPreferenceRequest: $updateGlobalUserPreferenceRequest
+    ) {
+      defaultGlobalAccount {
+        sdsId
+        name
+      }
     }
   }
 `;

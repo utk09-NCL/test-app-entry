@@ -48,30 +48,44 @@ export type OrderStatus =
 
 /**
  * Trading account - where order will be submitted.
+ * Maps directly to backend Account type.
  */
 export interface Account {
-  id: string; // e.g., "ACC-001"
-  name: string; // e.g., "Trading Account 1"
-  currency: string; // e.g., "USD"
+  sdsId: number; // Account ID as returned by backend
+  name: string; // Account display name
 }
 
 /**
  * Liquidity pool - source of market liquidity for order execution.
+ * Maps directly to backend LiquidityPool type.
  */
 export interface LiquidityPool {
-  id: string; // e.g., "GATOR_POOL_1"
-  name: string; // e.g., "Gator Pool"
-  provider: string; // e.g., "Bank A"
+  value: string; // Pool ID (e.g., "GATOR_POOL_1")
+  name: string; // Pool display name (e.g., "Gator Liquid")
 }
 
 /**
  * Currency pair - asset being traded.
+ * Maps directly to backend CurrencyPair type.
  */
 export interface CurrencyPair {
-  symbol: string; // e.g., "GBPUSD", "EURUSD"
-  base: string; // e.g., "GBP" (what you're buying/selling)
-  quote: string; // e.g., "USD" (what you're paying with)
-  precision: number; // Decimal places for price display
+  id: string; // Composite ID (e.g., "GBPUSD_false_true_false_true")
+  symbol: string; // Pair symbol (e.g., "GBPUSD")
+  ccy1: string; // First currency (e.g., "GBP")
+  ccy2: string; // Second currency (e.g., "USD")
+  ccy1Deliverable: boolean;
+  ccy2Deliverable: boolean;
+  ccy1Onshore: boolean;
+  ccy2Onshore: boolean;
+  spotPrecision: number; // Decimal places for price display
+  bigDigits: number;
+  bigDigitsOffset: number;
+  additionalPrecision: number;
+  minPipStep: number;
+  defaultPipStep: number;
+  defaultTenor: string;
+  tenor: string;
+  stopLossAllowed: boolean;
 }
 
 /**
