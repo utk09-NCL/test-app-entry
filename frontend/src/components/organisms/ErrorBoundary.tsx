@@ -33,8 +33,6 @@ export class ErrorBoundary extends Component<Props, State> {
       error,
       errorInfo,
     });
-
-    // TODO: Send to error tracking service (e.g., Sentry)
   }
 
   override render() {

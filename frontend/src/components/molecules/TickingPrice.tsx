@@ -94,7 +94,7 @@ export const TickingPrice = ({ symbol }: TickingPriceProps) => {
   const formattedSellPrice = sellPrice.toFixed(PRICE_CONFIG.PRICE_DECIMALS);
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} data-testid="ticking-price">
       {/* BUY price box */}
       <div className={styles.priceBox}>
         <div className={styles.label}>BUY</div>
@@ -104,6 +104,7 @@ export const TickingPrice = ({ symbol }: TickingPriceProps) => {
         </div>
       </div>
       {/* Spacer between prices */}
+      {/* // TODO: Replace with a verical separator */}
       <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
       {/* SELL price box */}
       <div className={styles.priceBox}>

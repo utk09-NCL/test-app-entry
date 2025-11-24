@@ -37,7 +37,7 @@ export const MainLayout = ({ children }: Props) => {
   const setToast = useOrderEntryStore((s) => s.setToast);
 
   return (
-    <div className={styles.layout}>
+    <div className={styles.layout} data-testid="main-layout">
       {/* Card container - centered, shadowed, white background */}
       <div className={styles.card}>
         {/* Page content (OrderHeader + OrderForm) */}

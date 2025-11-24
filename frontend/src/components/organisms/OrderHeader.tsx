@@ -17,6 +17,7 @@
  * Note: The symbol can also be set by FDC3 intents from external applications
  */
 
+import clsx from "clsx";
 import { useOrderEntryStore } from "../../store";
 import { Select } from "../atoms/Select";
 import { TickingPrice } from "../molecules/TickingPrice";
@@ -37,10 +38,10 @@ export const OrderHeader = () => {
 
   return (
     <>
-      <div className={styles.header}>
+      <div className={styles.header} data-testid="order-header">
         {/* Currency Pair Selector */}
         <div className={styles.pairSelector}>
-          <label className={styles.label} htmlFor="currency-pair-select">
+          <label className={clsx(styles.label, "sr-only")} htmlFor="currency-pair-select">
             Currency Pair:
           </label>
           <Select
@@ -66,7 +67,7 @@ export const OrderHeader = () => {
 
       {/* Live Price Feed */}
       {/* Shows real-time BUY and SELL prices for the selected symbol */}
-      {/* TODO (Phase 5): This will subscribe to WebSocket price updates */}
+      {/* // TODO (Phase 5): This will subscribe to WebSocket price updates */}
       <TickingPrice symbol={symbol} />
     </>
   );

@@ -11,6 +11,7 @@
     "lint:fix": "eslint . --ext ts,tsx --fix"
   },
   "dependencies": {
+    "clsx": "2.1.1",
     "immer": "10.2.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
