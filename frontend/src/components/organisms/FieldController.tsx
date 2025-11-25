@@ -57,6 +57,7 @@ export const FieldController = ({ fieldKey, rowIndex }: FieldControllerProps) =>
 
   // Get validation state for this field
   const error = useOrderEntryStore((s) => s.errors[fieldKey]); // Error message if validation failed
+  const refDataError = useOrderEntryStore((s) => s.refDataErrors[fieldKey]); // Reference data unavailable
   const validating = useOrderEntryStore((s) => s.isValidating[fieldKey]); // True while async validation is running
 
   // Get edit mode to determine field interactivity
@@ -71,6 +72,7 @@ export const FieldController = ({ fieldKey, rowIndex }: FieldControllerProps) =>
   // Get functions to update store (these are stable references)
   const setFieldValue = useOrderEntryStore((s) => s.setFieldValue);
   const validateField = useOrderEntryStore((s) => s.validateField);
+  const validateRefData = useOrderEntryStore((s) => s.validateRefData);
   const amendOrder = useOrderEntryStore((s) => s.amendOrder);
 
   // ===== Reference Data =====
@@ -123,7 +125,12 @@ export const FieldController = ({ fieldKey, rowIndex }: FieldControllerProps) =>
 
   // ===== Change Handler =====
   // Wrapper function that updates store when field value changes
-  const handleChange = (val: string | number | undefined) => setFieldValue(fieldKey, val);
+  const handleChange = (val: string | number | undefined) => {
+    setFieldValue(fieldKey, val);
+    // Re-validate reference data after field change
+    // This clears refDataError if user selects a valid option
+    setTimeout(() => validateRefData(), 0);
+  };
 
   // ===== Component Selection =====
   // Based on field definition, render the appropriate input component
@@ -218,9 +225,25 @@ export const FieldController = ({ fieldKey, rowIndex }: FieldControllerProps) =>
 
       // Dynamic Option Loading: Replace with data from store
       // This allows dropdowns to be populated from server data
-      if (fieldKey === "account") opts = accounts.map((a) => ({ label: a.name, value: a.sdsId }));
-      if (fieldKey === "liquidityPool")
+      if (fieldKey === "account") {
+        opts = accounts.map((a) => ({ label: a.name, value: a.sdsId.toString() }));
+
+        // If current value doesn't exist in options (unavailable account)
+        // Add it to dropdown so it can be displayed
+        if (value && !opts.some((opt) => opt.value === value)) {
+          opts.unshift({ label: `${value} (Unavailable)`, value: value as string });
+        }
+      }
+
+      if (fieldKey === "liquidityPool") {
         opts = pools.map((p) => ({ label: p.name, value: p.value }));
+
+        // If current value doesn't exist in options (unavailable pool)
+        // Add it to dropdown so it can be displayed
+        if (value && !opts.some((opt) => opt.value === value)) {
+          opts.unshift({ label: `${value} (Unavailable)`, value: value as string });
+        }
+      }
 
       inputEl = (
         <Select
@@ -229,9 +252,9 @@ export const FieldController = ({ fieldKey, rowIndex }: FieldControllerProps) =>
           data-testid={`select-${fieldKey}`}
           value={(value as string) || ""}
           onChange={(e) => handleChange(e.target.value)}
-          hasError={!!error}
+          hasError={!!(error || refDataError)}
           options={opts}
-          disabled={isReadOnly}
+          disabled={isReadOnly || (editMode === "amending" && !!refDataError)}
           {...def.props} // Additional props from field definition
         />
       );
@@ -281,7 +304,7 @@ export const FieldController = ({ fieldKey, rowIndex }: FieldControllerProps) =>
   return (
     <RowComponent
       label={def.label}
-      error={error}
+      error={error || refDataError} // Show validation error or reference data error
       isValidating={validating}
       fieldKey={fieldKey}
       isGroupField={def.component === "Toggle"}

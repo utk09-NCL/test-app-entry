@@ -42,6 +42,9 @@ export const OrderForm = () => {
   // - "amending": Only editableFields are editable (amend mode)
   const editMode = useOrderEntryStore((s) => s.editMode);
 
+  // Get entitled order types from server (user's permissions)
+  const entitledOrderTypes = useOrderEntryStore((s) => s.entitledOrderTypes);
+
   // Order Type selector itself should be disabled in viewing/amending modes
   const isReadOnly = editMode === "viewing" || editMode === "amending";
 
@@ -68,10 +71,20 @@ export const OrderForm = () => {
             // This triggers form re-render with new field configuration
             useOrderEntryStore.getState().setFieldValue("orderType", e.target.value as OrderType)
           }
-          options={Object.keys(ORDER_TYPES).map((t) => ({
-            label: t,
-            value: t,
-          }))}
+          options={
+            // In CREATE mode: Show only entitled order types from server
+            // In VIEW/AMEND mode: Include current orderType even if not entitled (for viewing orders)
+            editMode === "creating"
+              ? entitledOrderTypes.map((t) => ({
+                  label: t,
+                  value: t,
+                }))
+              : // Add current orderType if not in entitled list (viewing unavailable order)
+                Array.from(new Set([orderType, ...entitledOrderTypes])).map((t) => ({
+                  label: t,
+                  value: t,
+                }))
+          }
           disabled={isReadOnly}
         />
       </RowComponent>

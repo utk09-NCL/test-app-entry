@@ -43,6 +43,10 @@ export const createComputedSlice: StateCreator<
   warnings: {},
   /** Server-side validation errors (async checks) */
   serverErrors: {},
+  /** Reference data validation errors (unavailable accounts/pools/etc) */
+  refDataErrors: {},
+  /** Global error message (shown above submit button) */
+  globalError: null,
   /** Fields currently being validated (for loading indicators) */
   isValidating: {},
   /**
@@ -77,7 +81,11 @@ export const createComputedSlice: StateCreator<
    */
   isFormValid: () => {
     const s = get();
-    return Object.keys(s.errors).length === 0 && Object.keys(s.serverErrors).length === 0;
+    return (
+      Object.keys(s.errors).length === 0 &&
+      Object.keys(s.serverErrors).length === 0 &&
+      Object.keys(s.refDataErrors).length === 0
+    );
   },
 
   /**
@@ -178,6 +186,82 @@ export const createComputedSlice: StateCreator<
   },
 
   /**
+   * Validate reference data (check if field values exist in server response).
+   * Called after setFieldValue or when reference data changes.
+   *
+   * Checks:
+   * - account: Must exist in accounts array
+   * - orderType: Must exist in entitledOrderTypes array
+   * - symbol: Must exist in currencyPairs array (for current orderType)
+   * - liquidityPool: Must exist in pools array
+   */
+  validateRefData: () => {
+    const values = get().getDerivedValues();
+    const { accounts, entitledOrderTypes, currencyPairs, pools } = get();
+    const newRefDataErrors: Record<string, string> = {};
+
+    // Check account availability
+    if (values.account) {
+      const accountExists = accounts.some((a) => a.sdsId.toString() === values.account);
+      if (!accountExists) {
+        newRefDataErrors.account = "Account not available";
+      }
+    }
+
+    // Check order type availability
+    if (values.orderType) {
+      const orderTypeExists = entitledOrderTypes.includes(values.orderType);
+      if (!orderTypeExists) {
+        newRefDataErrors.orderType = "Order type not supported";
+      }
+    }
+
+    // Check currency pair availability
+    if (values.symbol) {
+      const currencyPairExists = currencyPairs.some((cp) => cp.symbol === values.symbol);
+      if (!currencyPairExists) {
+        newRefDataErrors.symbol = "Currency pair not available for this order type";
+      }
+    }
+
+    // Check liquidity pool availability
+    if (values.liquidityPool) {
+      const poolExists = pools.some((p) => p.value === values.liquidityPool);
+      if (!poolExists) {
+        newRefDataErrors.liquidityPool = "Liquidity pool not available";
+      }
+    }
+
+    // Update refDataErrors
+    set((state) => {
+      state.refDataErrors = newRefDataErrors;
+
+      // Set global error if any refDataErrors exist
+      if (Object.keys(newRefDataErrors).length > 0) {
+        // Check if globalError is already set by server (don't override)
+        if (!state.globalError || state.globalError === "Please contact support@example.com") {
+          state.globalError = "Please contact support@example.com";
+        }
+      } else {
+        // Clear global error only if it was the generic refData error
+        if (state.globalError === "Please contact support@example.com") {
+          state.globalError = null;
+        }
+      }
+    });
+  },
+
+  /**
+   * Set global error message (can be called from server response handlers).
+   * Server errors take priority over local refData errors.
+   */
+  setGlobalError: (error) => {
+    set((state) => {
+      state.globalError = error;
+    });
+  },
+
+  /**
    * Submit the order (final validation + API call).
    *
    * Flow:
@@ -256,8 +340,23 @@ export const createComputedSlice: StateCreator<
    *
    * Note: Only fields in orderConfig.editableFields become editable.
    * dirtyValues are preserved so user can continue editing.
+   *
+   * IMPORTANT: Cannot amend if reference data errors exist.
    */
   amendOrder: () => {
+    const refDataErrors = get().refDataErrors;
+
+    // Prevent amending if reference data is unavailable
+    if (Object.keys(refDataErrors).length > 0) {
+      set((state) => {
+        state.toastMessage = {
+          type: "error",
+          text: "Cannot amend order with unavailable data",
+        };
+      });
+      return;
+    }
+
     set((state) => {
       state.editMode = "amending";
       // Keep dirtyValues so user continues where they left off

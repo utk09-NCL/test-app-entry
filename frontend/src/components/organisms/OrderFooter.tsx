@@ -41,17 +41,39 @@ export const OrderFooter = () => {
   // Validation state
   const errors = useOrderEntryStore((s) => s.errors); // Client-side validation errors
   const serverErrors = useOrderEntryStore((s) => s.serverErrors); // Server-side validation errors
+  const refDataErrors = useOrderEntryStore((s) => s.refDataErrors); // Reference data unavailable errors
+  const globalError = useOrderEntryStore((s) => s.globalError); // Global error message
 
   // Check if form has any errors (disables submit button)
-  const hasErrors = Object.keys(errors).length > 0 || Object.keys(serverErrors).length > 0;
+  const hasErrors =
+    Object.keys(errors).length > 0 ||
+    Object.keys(serverErrors).length > 0 ||
+    Object.keys(refDataErrors).length > 0;
 
   return (
     <div className={styles.footer}>
+      {/* Global Error Banner */}
+      {globalError && (
+        <div className={styles.globalError} data-testid="global-error-banner">
+          {globalError}
+        </div>
+      )}
+
       {/* Conditional Button Rendering */}
       {editMode === "viewing" ? (
         // After successful submit, show AMEND button
         // Clicking this sets editMode to "amending" and unlocks editable fields
-        <button onClick={() => amendOrder()} className={styles.submitBtn}>
+        // Button is disabled if reference data errors exist
+        <button
+          onClick={() => amendOrder()}
+          className={styles.submitBtn}
+          disabled={Object.keys(refDataErrors).length > 0}
+          title={
+            Object.keys(refDataErrors).length > 0
+              ? "Cannot amend order with unavailable data"
+              : undefined
+          }
+        >
           AMEND ORDER
         </button>
       ) : (
@@ -61,6 +83,7 @@ export const OrderFooter = () => {
           onClick={() => submitOrder()}
           disabled={status === "SUBMITTING" || hasErrors}
           className={styles.submitBtn}
+          title={hasErrors ? "Please fix errors before submitting" : undefined}
         >
           {/* Show spinner during submission, otherwise show text */}
           {status === "SUBMITTING" ? <Spinner size="md" /> : "SUBMIT ORDER"}

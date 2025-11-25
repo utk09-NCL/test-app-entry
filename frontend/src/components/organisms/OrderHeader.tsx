@@ -34,8 +34,48 @@ export const OrderHeader = () => {
   // This comes from the merged state (baseValues + dirtyValues)
   const symbol = useOrderEntryStore((s) => s.getDerivedValues().symbol);
 
+  // Get edit mode and reference data errors
+  const editMode = useOrderEntryStore((s) => s.editMode);
+  const refDataError = useOrderEntryStore((s) => s.refDataErrors.symbol);
+
   // Action to update any form field value
   const setFieldValue = useOrderEntryStore((s) => s.setFieldValue);
+  const validateRefData = useOrderEntryStore((s) => s.validateRefData);
+
+  // Handle symbol change
+  const handleSymbolChange = (newSymbol: string) => {
+    setFieldValue("symbol", newSymbol);
+    // Re-validate reference data after change
+    setTimeout(() => validateRefData(), 0);
+  };
+
+  // Build currency pair options
+  // If current symbol is unavailable, add it to the list
+  const symbolOptions = [...pairs];
+  const currentSymbolExists = pairs.some((p) => p.symbol === symbol);
+
+  if (symbol && !currentSymbolExists) {
+    // Add unavailable symbol to dropdown
+    symbolOptions.unshift({
+      symbol,
+      id: symbol,
+      ccy1: symbol.slice(0, 3),
+      ccy2: symbol.slice(3, 6),
+      ccy1Deliverable: false,
+      ccy2Deliverable: false,
+      ccy1Onshore: false,
+      ccy2Onshore: false,
+      spotPrecision: 5,
+      bigDigits: 2,
+      bigDigitsOffset: 0,
+      additionalPrecision: 0,
+      minPipStep: 0.0001,
+      defaultPipStep: 0.0001,
+      defaultTenor: "SPOT",
+      tenor: ["SPOT"],
+      stopLossAllowed: false,
+    });
+  }
 
   return (
     <>
@@ -49,20 +89,20 @@ export const OrderHeader = () => {
             id="currency-pair-select"
             name="currencyPair"
             value={symbol}
-            onChange={(e) =>
-              // Update symbol in store
-              // This will trigger TickingPrice to subscribe to new symbol's prices
-              setFieldValue("symbol", e.target.value)
-            }
+            onChange={(e) => handleSymbolChange(e.target.value)}
             className={styles.selectOverride}
+            hasError={!!refDataError}
+            disabled={editMode === "amending" && !!refDataError}
           >
             {/* Render all available currency pairs */}
-            {pairs.map((p) => (
+            {symbolOptions.map((p) => (
               <option key={p.symbol} value={p.symbol}>
                 {p.symbol}
+                {!currentSymbolExists && p.symbol === symbol ? " (Unavailable)" : ""}
               </option>
             ))}
           </Select>
+          {refDataError && <div className={styles.error}>{refDataError}</div>}
         </div>
       </div>
 

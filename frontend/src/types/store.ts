@@ -55,6 +55,8 @@ export interface RefDataSlice {
   pools: LiquidityPool[];
   /** Currency pairs available for trading */
   currencyPairs: CurrencyPair[];
+  /** Order types user is entitled to (from server) */
+  entitledOrderTypes: string[];
   /** Loading state for reference data fetch */
   isLoadingRefData: boolean;
   /** Set all reference data at once (called after API fetch) */
@@ -62,6 +64,7 @@ export interface RefDataSlice {
     accounts: Account[];
     pools: LiquidityPool[];
     currencyPairs: CurrencyPair[];
+    entitledOrderTypes: string[];
   }) => void;
 }
 
@@ -110,6 +113,10 @@ export interface ComputedSlice {
   warnings: Record<string, string>;
   /** Server-side validation errors (async checks) */
   serverErrors: Record<string, string>;
+  /** Reference data validation errors (unavailable accounts/pools/etc) */
+  refDataErrors: Record<string, string>;
+  /** Global error message (shown above submit button) */
+  globalError: string | null;
   /** Fields currently being validated (for loading indicators) */
   isValidating: Record<string, boolean>;
   /** Validation request tracking (prevents race conditions) */
@@ -127,6 +134,10 @@ export interface ComputedSlice {
     field: K,
     value: OrderStateData[K] | undefined
   ) => Promise<void>;
+  /** Validate reference data (check if field values exist in server response) */
+  validateRefData: () => void;
+  /** Set global error message */
+  setGlobalError: (error: string | null) => void;
   /** Submit the order (final validation + API call) */
   submitOrder: () => Promise<void>;
   /** Enter amend mode (make submitted order editable again) */

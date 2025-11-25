@@ -42,6 +42,9 @@ export const createRefDataSlice: StateCreator<
   /** Currency pairs available for trading (e.g., "GBPUSD", "EURUSD") */
   currencyPairs: [],
 
+  /** Order types user is entitled to (from server) */
+  entitledOrderTypes: [],
+
   /** Loading state for reference data fetch */
   isLoadingRefData: true,
 
@@ -54,6 +57,7 @@ export const createRefDataSlice: StateCreator<
       state.accounts = data.accounts;
       state.pools = data.pools;
       state.currencyPairs = data.currencyPairs;
+      state.entitledOrderTypes = data.entitledOrderTypes;
       state.isLoadingRefData = false; // Loading complete
     }),
 });

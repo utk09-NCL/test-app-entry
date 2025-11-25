@@ -51,6 +51,7 @@ export const useAppInit = () => {
   const setRefData = useOrderEntryStore((s) => s.setRefData);
   const setBaseValues = useOrderEntryStore((s) => s.setBaseValues);
   const resetInteractions = useOrderEntryStore((s) => s.resetFormInteractions);
+  const validateRefData = useOrderEntryStore((s) => s.validateRefData);
 
   // Query 1: Fetch all accounts
   // Used to populate account dropdown
@@ -127,6 +128,10 @@ export const useAppInit = () => {
     // Keep sdsId as number, don't add extra fields
     const accounts: Account[] = accountsData?.accounts || [];
 
+    // Extract entitled order types from server response
+    const entitledOrderTypes: string[] =
+      orderTypesData?.orderTypesWithPools?.map((ot) => ot.orderType) || [];
+
     // Extract all unique liquidity pools from all order types
     // Backend returns pools nested under each order type, we need a flat list
     const poolsMap = new Map<string, LiquidityPool>();
@@ -150,7 +155,12 @@ export const useAppInit = () => {
       accounts,
       pools,
       currencyPairs,
+      entitledOrderTypes,
     });
+
+    // Validate reference data after loading
+    // This checks if any baseValues reference unavailable data
+    validateRefData();
 
     // Mark app as ready (hides loading screen, shows form)
     setStatus("READY");
@@ -166,6 +176,7 @@ export const useAppInit = () => {
     currencyPairsError,
     setRefData,
     setStatus,
+    validateRefData,
   ]);
 
   // Effect 2: Apply user preferences when available
@@ -180,8 +191,11 @@ export const useAppInit = () => {
       setBaseValues({
         account: defaultAccount.sdsId.toString(),
       });
+
+      // Validate that the default account exists in accounts list
+      validateRefData();
     }
-  }, [userPrefsData, setBaseValues]);
+  }, [userPrefsData, setBaseValues, validateRefData]);
 
   // Effect 3: Initialize FDC3 Service (Phase 6)
   useEffect(() => {
@@ -198,7 +212,11 @@ export const useAppInit = () => {
       // This ensures external intents always take precedence over manual edits
       resetInteractions();
 
+      // Validate reference data after FDC3 intent
+      // Check if intent references unavailable accounts/orderTypes/symbols/pools
+      validateRefData();
+
       console.log("[useAppInit] FDC3 intent received and applied:", ctx);
     });
-  }, [setBaseValues, resetInteractions]);
+  }, [setBaseValues, resetInteractions, validateRefData]);
 };
