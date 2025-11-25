@@ -26,11 +26,15 @@
 import * as v from "valibot";
 import { StateCreator } from "zustand";
 
-import { AMOUNT_CONFIG, VALIDATION_CONFIG } from "../../config/constants";
 import { SCHEMA_MAP } from "../../config/validation";
 import { graphqlClient } from "../../graphql/client";
 import { AMEND_ORDER_MUTATION, CREATE_ORDER_MUTATION } from "../../graphql/mutations";
-import type { AmendOrderResponse, CreateOrderResponse } from "../../graphql/types";
+import { VALIDATE_FIELD_SUBSCRIPTION } from "../../graphql/subscriptions";
+import type {
+  AmendOrderResponse,
+  CreateOrderResponse,
+  ValidateFieldSubscriptionResponse,
+} from "../../graphql/types";
 import { OrderStateData } from "../../types/domain";
 import { BoundState, ComputedSlice } from "../../types/store";
 
@@ -166,26 +170,64 @@ export const createComputedSlice: StateCreator<
     }
 
     // ========================================
-    // 2. Asynchronous Validation (Server Check)
+    // 2. Asynchronous Validation (Server Subscription)
     // ========================================
-    // Example: Check if notional exceeds firm trading limit
-    if (field === "limitPrice" || field === "notional") {
-      // Simulate network delay
-      await new Promise((resolve) =>
-        setTimeout(resolve, VALIDATION_CONFIG.SERVER_VALIDATION_DELAY_MS)
-      );
+    try {
+      const derived = get().getDerivedValues();
+      const variables = {
+        input: {
+          field,
+          value: value == null ? null : String(value),
+          orderType: derived.orderType,
+          symbol: derived.symbol,
+          account: derived.account,
+          liquidityPool: derived.liquidityPool,
+          timeInForce: derived.timeInForce,
+        },
+      } as const;
+
+      const result = await new Promise<ValidateFieldSubscriptionResponse>((resolve, reject) => {
+        const sub = graphqlClient
+          .subscribe<ValidateFieldSubscriptionResponse>({
+            query: VALIDATE_FIELD_SUBSCRIPTION,
+            variables,
+          })
+          .subscribe({
+            next: (event) => {
+              resolve(event.data as ValidateFieldSubscriptionResponse);
+              sub.unsubscribe();
+            },
+            error: (err) => {
+              reject(err);
+              sub.unsubscribe();
+            },
+          });
+      });
 
       // Check if this validation is still relevant (race condition guard)
       if (get().validationRequestIds[field] !== currentId) return;
 
-      // Example server-side check: Firm limit exceeded
-      if (field === "notional" && value && Number(value) > AMOUNT_CONFIG.MAX_FIRM_LIMIT) {
+      const payload = result?.validateField;
+      if (payload) {
         set((state) => {
-          if (state.validationRequestIds[field] === currentId) {
-            state.errors[field] = "Exceeds firm trading limit (Server)";
+          if (state.validationRequestIds[field] !== currentId) return;
+
+          // Clear previous server errors/warnings for this field
+          delete state.serverErrors[field];
+          delete state.warnings[field];
+
+          if (!payload.ok) {
+            if (payload.type === "HARD") {
+              state.serverErrors[field] = payload.message || "Invalid";
+            } else if (payload.type === "SOFT") {
+              state.warnings[field] = payload.message || "Check value";
+            }
           }
         });
       }
+    } catch (e) {
+      const appInstanceId = get().instanceId;
+      console.error(`[${appInstanceId}] [Validation] Server validation error:`, e);
     }
 
     // Mark validation as complete
@@ -362,6 +404,7 @@ export const createComputedSlice: StateCreator<
               text: `Order ${values.symbol} Amended!`,
             };
             state.serverErrors = {};
+            state.warnings = {};
           });
         } else {
           // Amendment failed
@@ -414,6 +457,7 @@ export const createComputedSlice: StateCreator<
               text: `Order ${values.direction} ${values.symbol} Placed!`,
             };
             state.serverErrors = {};
+            state.warnings = {};
           });
         } else {
           // Order creation failed

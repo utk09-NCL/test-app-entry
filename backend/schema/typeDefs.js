@@ -1,5 +1,9 @@
 export const typeDefs = `#graphql
   # Enums
+  enum ValidationType {
+    SOFT
+    HARD
+  }
   enum OrderType {
     LIMIT
     MARKET
@@ -27,6 +31,23 @@ export const typeDefs = `#graphql
     GTD
     IOC
     FOK
+  }
+  # Validation Types
+  type FieldValidation {
+    field: String!
+    ok: Boolean!
+    type: ValidationType
+    message: String
+  }
+
+  input ValidateFieldInput {
+    field: String!
+    value: String
+    orderType: OrderType!
+    symbol: String
+    account: String
+    liquidityPool: String
+    timeInForce: TimeInForce
   }
 
   # Basic Types
@@ -264,5 +285,6 @@ export const typeDefs = `#graphql
     orderFailure(orderId: ID!): OrderFailure!
     gatorData(subscription: GatorSubscription): GatorData!
     globalUserPreferencesStream: GlobalUserPreferences!
+    validateField(input: ValidateFieldInput!): FieldValidation!
   }
 `;

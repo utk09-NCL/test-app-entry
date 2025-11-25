@@ -1151,13 +1151,14 @@ export const ORDER_TYPES: Record<OrderType, OrderConfig> = {
 
 ### Multi-Layer Validation
 
-The app uses **3 layers of validation**:
+The app uses **4 layers of validation**:
 
 #### 1. Synchronous (Client-Side)
 
 - **Library**: Valibot
 - **When**: On field change (debounced 50ms)
 - **Where**: `/src/config/validation.ts`
+- **Storage**: `errors[field]` in ComputedSlice
 - **Examples**:
   - Required field check
   - Min/max value check
@@ -1171,26 +1172,82 @@ const notionalSchema = v.pipe(
 );
 ```
 
-#### 2. Asynchronous (Server-Side)
+#### 2. Asynchronous (Server-Side via Subscription)
 
-- **When**: After sync validation passes
+- **Status**: ✅ **IMPLEMENTED**
+- **When**: After sync validation passes (debounced)
 - **Where**: `/src/store/slices/createComputedSlice.ts` (validateField)
+- **Storage**: `serverErrors[field]` for HARD errors, `warnings[field]` for SOFT warnings
+- **How**: GraphQL subscription to `validateField(input: ValidateFieldInput!)`
 - **Examples**:
   - Firm trading limit check
   - Price band validation
-  - Account balance check
+  - Account/pool/symbol availability in backend
+  - Positive number and range checks
+
+**Implementation Details**:
+
+The validation flow uses a short-lived GraphQL subscription per field validation:
 
 ```typescript
-// Simulate async validation
-if (field === "notional" && value > MAX_FIRM_LIMIT) {
-  state.errors[field] = "Exceeds firm trading limit";
+const result = await new Promise<ValidateFieldSubscriptionResponse>((resolve, reject) => {
+  const sub = graphqlClient
+    .subscribe<ValidateFieldSubscriptionResponse>({
+      query: VALIDATE_FIELD_SUBSCRIPTION,
+      variables: {
+        input: {
+          field,
+          value: value == null ? null : String(value),
+          orderType: derived.orderType,
+          symbol: derived.symbol,
+          account: derived.account,
+          liquidityPool: derived.liquidityPool,
+          timeInForce: derived.timeInForce,
+        },
+      },
+    })
+    .subscribe({
+      next: (event) => {
+        resolve(event.data as ValidateFieldSubscriptionResponse);
+        sub.unsubscribe();
+      },
+      error: (err) => {
+        reject(err);
+        sub.unsubscribe();
+      },
+    });
+});
+
+const payload = result?.validateField;
+if (payload && !payload.ok) {
+  if (payload.type === "HARD") {
+    state.serverErrors[field] = payload.message || "Invalid";
+  } else if (payload.type === "SOFT") {
+    state.warnings[field] = payload.message || "Check value";
+  }
 }
 ```
+
+**Backend Implementation** (`backend/schema/resolvers.js`):
+
+The `validateField` subscription resolver performs basic checks and yields one result:
+
+- **notional**: Must be a number, positive, and below firm limit (soft warning if above $1B)
+- **limitPrice/stopPrice**: Must be a number and positive
+- **account**: Must exist in `accounts.json`
+- **liquidityPool**: Must exist in `orderTypesWithPools.json`
+- **symbol**: Must exist in `currencyPairs.json`
+
+**Validation Types**:
+
+- `HARD`: Blocking error (prevents submission) → stored in `serverErrors[field]`
+- `SOFT`: Advisory warning (allows submission) → stored in `warnings[field]`
 
 #### 3. Reference Data Validation
 
 - **When**: After data loads, after field changes
 - **Where**: `/src/store/slices/createComputedSlice.ts` (validateRefData)
+- **Storage**: `refDataErrors[field]` in ComputedSlice
 - **Examples**:
   - Account exists in accounts list
   - Order type in entitledOrderTypes
@@ -1203,6 +1260,30 @@ if (values.account && !accounts.some(a => a.sdsId === values.account)) {
 }
 ```
 
+#### 4. Warnings (Non-Blocking)
+
+- **Status**: ✅ **IMPLEMENTED**
+- **When**: From server validation (SOFT type)
+- **Where**: `/src/store/slices/createComputedSlice.ts`
+- **Storage**: `warnings[field]` in ComputedSlice
+- **Display**: Yellow text below field (only shown if no errors present)
+- **Examples**:
+  - Large trade notification
+  - Price outside typical range
+  - Advisory messages that don't block submission
+
+**UI Behavior**:
+
+Warnings are displayed in `RowComponent` with a subtle yellow color (`$oe-color-status-warning`) and only appear when there are no errors on that field:
+
+```typescript
+// In FieldController
+<RowComponent
+  error={serverError || error || refDataError}
+  warning={!serverError && !error && !refDataError ? warning : undefined}
+/>
+```
+
 ### Validation Timing
 
 ```text
@@ -1212,14 +1293,40 @@ User types → setFieldValue (immediate) → UI updates (immediate)
                                               ↓
                                         validateField fires
                                               ↓
-                                 1. Sync validation (instant)
+                                 1. Sync validation (Valibot - instant)
                                               ↓
-                                 2. Async validation (1.2s delay)
+                        2. Async validation (GraphQL subscription - ~100-300ms)
                                               ↓
-                                        Update errors
+                       Open subscription → Receive FieldValidation → Close
+                                              ↓
+                        Update serverErrors/warnings based on type
                                               ↓
                                     FieldController re-renders
+                                              ↓
+               Error (red) or Warning (yellow) displayed below field
 ```
+
+### Validation State Management
+
+**State Structure** (in ComputedSlice):
+
+```typescript
+{
+  errors: Record<string, string>;           // Client-side (Valibot)
+  serverErrors: Record<string, string>;     // Server HARD errors
+  refDataErrors: Record<string, string>;    // Reference data unavailable
+  warnings: Record<string, string>;         // Server SOFT warnings
+  isValidating: Record<string, boolean>;    // Per-field validation in progress
+  validationRequestIds: Record<string, number>; // Race condition tracking
+}
+```
+
+**Display Priority** (in UI):
+
+1. Server errors (`serverErrors[field]`) - Shown in red, blocks submission
+2. Client errors (`errors[field]`) - Shown in red, blocks submission
+3. Reference data errors (`refDataErrors[field]`) - Shown in red, blocks submission
+4. Warnings (`warnings[field]`) - Shown in yellow, allows submission
 
 ### Race Condition Handling
 
@@ -1252,8 +1359,9 @@ if (get().validationRequestIds[field] === currentId) {
 | Price Feed | ✅ IMPLEMENTED | `TickingPrice.tsx`, `currencyPairHelpers.ts` |
 | Order Submission | ✅ IMPLEMENTED | `createComputedSlice.ts` |
 | Order Status Tracking | ✅ IMPLEMENTED | `useOrderTracking.ts`, `createAppSlice.ts` |
+| Async Field Validation | ✅ IMPLEMENTED | `createComputedSlice.ts`, `backend/schema/resolvers.js` |
+| Warning Display | ✅ IMPLEMENTED | `RowComponent.tsx`, `FieldController.tsx` |
 | FDC3 Integration | ❌ MOCK | `fdc3Service.ts` |
-| Async Field Validation | ❌ MOCK | `createComputedSlice.ts` |
 
 ---
 
@@ -1294,9 +1402,11 @@ window.fdc3 = mockFdc3;
 
 #### 2. Price Ticking
 
+**Status**: ✅ **IMPLEMENTED**
+
 **File**: `/src/components/molecules/TickingPrice.tsx`
 
-**Mock Implementation**:
+**Previous Mock Implementation**:
 
 ```typescript
 useEffect(() => {
@@ -1308,32 +1418,19 @@ useEffect(() => {
 }, [symbol]);
 ```
 
-**Replace With**:
+**Current Implementation**:
 
-- Remove local state (buyPrice, sellPrice)
-- Subscribe to `GATOR_DATA_SUBSCRIPTION` with symbol variable
-- Use subscription data directly:
-
-  ```typescript
-  const { data } = useSubscription(GATOR_DATA_SUBSCRIPTION, {
-    variables: { input: { currencyPair: symbol } }
-  });
-
-  useEffect(() => {
-    if (data?.gatorData) {
-      const { topOfTheBookBuy, topOfTheBookSell } = data.gatorData;
-      setCurrentPrices(topOfTheBookBuy.price, topOfTheBookSell.price);
-    }
-  }, [data]);
-  ```
+Now uses GraphQL `GATOR_DATA_SUBSCRIPTION` for real-time price updates. See [Workflow 6: Real-Time Price Updates](#workflow-6-real-time-price-updates) for details.
 
 ---
 
 #### 3. Async Validation (Server-Side)
 
+**Status**: ✅ **IMPLEMENTED**
+
 **File**: `/src/store/slices/createComputedSlice.ts`
 
-**Mock Implementation**:
+**Previous Mock Implementation**:
 
 ```typescript
 // Simulate network delay
@@ -1345,21 +1442,9 @@ if (field === "notional" && value > MAX_FIRM_LIMIT) {
 }
 ```
 
-**Replace With**:
+**Current Implementation**:
 
-- Create GraphQL mutation/query for field validation
-- Example:
-
-  ```typescript
-  const { data } = await apolloClient.query({
-    query: VALIDATE_FIELD_QUERY,
-    variables: { field, value, orderType }
-  });
-
-  if (data.validateField.error) {
-    state.errors[field] = data.validateField.error;
-  }
-  ```
+Now uses GraphQL subscription-based validation. See [Validation System](#validation-system) for full details on the subscription flow, error/warning handling, and backend resolver implementation.
 
 ---
 
@@ -1664,9 +1749,8 @@ validateField: async (field, value) => {
    - Uses `isNdf()` and `isOnshore()` helpers to determine subscription parameters
    - Automatically re-subscribes when symbol changes
    - No more mock setInterval - all prices are real-time from server
-
-- Uses Apollo `onData` callback to update prices, setting directional flags in the subscription callback
-- Directional movement (up/down) now tracked via boolean state (`buyIsUp`, `sellIsUp`) — no render-time ref access
+   - Uses Apollo `onData` callback to update prices, setting directional flags in the subscription callback
+   - Directional movement (up/down) now tracked via boolean state (`buyIsUp`, `sellIsUp`)
 
 6. **Race Condition Handling**: Always use `validationRequestIds` for async validation to prevent stale results
 
@@ -1857,45 +1941,46 @@ validateField: async (field, value) => {
 
 ## Summary: Quick Reference
 
-### To Add a New Field
+### Quick Guides for Common Tasks
+
+#### To Add a New Field
 
 1. Update `types/domain.ts`
 2. Add to `fieldRegistry.ts`
 3. Add to `orderConfig.ts` fields array
 4. (Optional) Add validation in `validation.ts`
 
-### To Add a New Order Type
+#### To Add a New Order Type
 
 1. Update `types/domain.ts`
 2. Add config in `orderConfig.ts`
 3. Create Valibot schema in `validation.ts`
 
-### To Add a New Component Type
+#### To Add a New Component Type
 
 1. Create component in `components/atoms/` or `components/molecules/`
 2. Add case in `FieldController.tsx` switch statement
 3. Update `FieldDefinition` type in `fieldRegistry.ts`
 
-### To Change Validation
+#### To Modify Validation
 
 - **Sync**: Edit Valibot schemas in `validation.ts`
-- **Async**: Edit `validateField()` in `createComputedSlice.ts`
+- **Async**: Backend resolver is in `backend/schema/resolvers.js` (validateField subscription)
 - **Reference Data**: Edit `validateRefData()` in `createComputedSlice.ts`
 
-### To Change State Management
+#### To Modify State Management
 
 - **App status**: `createAppSlice.ts`
 - **User edits**: `createUserInteractionSlice.ts`
 - **Base values**: `createInitialOrderSlice.ts`
 - **Validation/submission**: `createComputedSlice.ts`
 
-### To Change GraphQL Integration
+#### To Modify GraphQL Integration
 
 - **Queries**: `graphql/queries.ts`
 - **Mutations**: `graphql/mutations.ts`
 - **Subscriptions**: `graphql/subscriptions.ts`
 
-### To Replace Mocks
+#### To Replace Remaining Mocks
 
 - **FDC3**: Remove mock in `fdc3Service.ts`, use real `window.fdc3`
-- **Validation**: Replace `setTimeout` in `createComputedSlice.ts` with GraphQL query

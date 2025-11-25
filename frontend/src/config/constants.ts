@@ -69,6 +69,6 @@ export const VALIDATION_CONFIG = {
 export const NOTIONAL_LIMITS = {
   /** Absolute minimum notional (e.g., $1 minimum) */
   MIN: 1,
-  /** Absolute maximum notional (e.g., $1 billion cap) */
-  MAX: 1_000_000_000,
+  /** Absolute maximum notional (e.g., $100 billion cap - client-side hard limit) */
+  MAX: 100_000_000_000,
 } as const;

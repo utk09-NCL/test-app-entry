@@ -56,8 +56,10 @@ export const FieldController = ({ fieldKey, rowIndex }: FieldControllerProps) =>
   const value = useOrderEntryStore((s) => s.getDerivedValues()[fieldKey]);
 
   // Get validation state for this field
-  const error = useOrderEntryStore((s) => s.errors[fieldKey]); // Error message if validation failed
+  const error = useOrderEntryStore((s) => s.errors[fieldKey]); // Client-side validation error
+  const serverError = useOrderEntryStore((s) => s.serverErrors[fieldKey]); // Server-side validation error
   const refDataError = useOrderEntryStore((s) => s.refDataErrors[fieldKey]); // Reference data unavailable
+  const warning = useOrderEntryStore((s) => s.warnings[fieldKey]); // Advisory warning (non-blocking)
   const validating = useOrderEntryStore((s) => s.isValidating[fieldKey]); // True while async validation is running
 
   // Get edit mode to determine field interactivity
@@ -147,7 +149,7 @@ export const FieldController = ({ fieldKey, rowIndex }: FieldControllerProps) =>
           name={fieldKey}
           value={value as number | undefined}
           onChange={handleChange}
-          hasError={!!error}
+          hasError={!!(error || serverError)}
           readOnly={isReadOnly}
           ccy1={ccy1} // Base currency (e.g., GBP in GBPUSD)
           ccy2={ccy2} // Quote currency (e.g., USD in GBPUSD)
@@ -167,7 +169,7 @@ export const FieldController = ({ fieldKey, rowIndex }: FieldControllerProps) =>
             name={fieldKey}
             value={value as number | undefined}
             onChange={handleChange}
-            hasError={!!error}
+            hasError={!!(error || serverError)}
             readOnly={isReadOnly}
             direction={direction} // BUY or SELL - determines which price to grab
           />
@@ -186,7 +188,7 @@ export const FieldController = ({ fieldKey, rowIndex }: FieldControllerProps) =>
               // Convert empty string to undefined, otherwise parse as number
               handleChange(val === "" ? undefined : Number(val));
             }}
-            hasError={!!error}
+            hasError={!!(error || serverError)}
             readOnly={isReadOnly}
             step={0.0001} // FX precision
             placeholder="0.00000"
@@ -209,7 +211,7 @@ export const FieldController = ({ fieldKey, rowIndex }: FieldControllerProps) =>
             const val = e.target.value;
             handleChange(val === "" ? undefined : Number(val));
           }}
-          hasError={!!error}
+          hasError={!!(error || serverError)}
           readOnly={isReadOnly}
           {...def.props} // Spread additional props from field definition (min, max, step, etc.)
         />
@@ -252,7 +254,7 @@ export const FieldController = ({ fieldKey, rowIndex }: FieldControllerProps) =>
           data-testid={`select-${fieldKey}`}
           value={(value as string) || ""}
           onChange={(e) => handleChange(e.target.value)}
-          hasError={!!(error || refDataError)}
+          hasError={!!(error || serverError || refDataError)}
           options={opts}
           disabled={isReadOnly || (editMode === "amending" && !!refDataError)}
           {...def.props} // Additional props from field definition
@@ -291,7 +293,7 @@ export const FieldController = ({ fieldKey, rowIndex }: FieldControllerProps) =>
           type="text"
           value={(value as string) || ""}
           onChange={(e) => handleChange(e.target.value)}
-          hasError={!!error}
+          hasError={!!(error || serverError)}
           readOnly={isReadOnly}
           {...def.props}
         />
@@ -304,7 +306,8 @@ export const FieldController = ({ fieldKey, rowIndex }: FieldControllerProps) =>
   return (
     <RowComponent
       label={def.label}
-      error={error || refDataError} // Show validation error or reference data error
+      error={serverError || error || refDataError} // Prefer server error, then client error, then ref data
+      warning={!serverError && !error && !refDataError ? warning : undefined} // Only show warning if no errors
       isValidating={validating}
       fieldKey={fieldKey}
       isGroupField={def.component === "Toggle"}

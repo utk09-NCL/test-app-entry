@@ -90,3 +90,14 @@ export const GLOBAL_USER_PREFERENCES_SUBSCRIPTION = gql`
     }
   }
 `;
+
+export const VALIDATE_FIELD_SUBSCRIPTION = gql`
+  subscription ValidateField($input: ValidateFieldInput!) {
+    validateField(input: $input) {
+      field
+      ok
+      type
+      message
+    }
+  }
+`;

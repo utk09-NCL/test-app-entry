@@ -12,6 +12,8 @@ interface RowProps {
   label: string;
   /** Validation error message (displayed below the field) */
   error?: string;
+  /** Warning message (non-blocking, advisory) */
+  warning?: string | undefined;
   /** Whether async validation is in progress */
   isValidating?: boolean;
   /** The form field component (Input, Select, Toggle, etc.) */
@@ -56,6 +58,7 @@ interface RowProps {
 export const RowComponent = ({
   label,
   error,
+  warning,
   isValidating,
   children,
   fieldKey,
@@ -112,6 +115,10 @@ export const RowComponent = ({
       {error ? (
         <span className={styles.error} data-testid={`error-${testId}`}>
           {error}
+        </span>
+      ) : warning ? (
+        <span className={styles.warning} data-testid={`warning-${testId}`}>
+          {warning}
         </span>
       ) : (
         <div className={styles.spacer} data-testid={`spacer-${testId}`}></div>

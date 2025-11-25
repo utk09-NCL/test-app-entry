@@ -177,6 +177,17 @@ export interface OrderFailureSubscriptionResponse {
   orderFailure: OrderFailureGQL;
 }
 
+export interface FieldValidationGQL {
+  field: string;
+  ok: boolean;
+  type: "SOFT" | "HARD" | null;
+  message: string | null;
+}
+
+export interface ValidateFieldSubscriptionResponse {
+  validateField: FieldValidationGQL;
+}
+
 // ============================================================================
 // Mutation Response Types
 // ============================================================================

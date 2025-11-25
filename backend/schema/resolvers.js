@@ -243,6 +243,108 @@ export const resolvers = {
   },
 
   Subscription: {
+    validateField: {
+      subscribe: async function* (_root, { input }) {
+        const { field, value, orderType, symbol, account, liquidityPool } =
+          input || {};
+
+        const fail = (message, type = "HARD") => ({
+          validateField: {
+            field,
+            ok: false,
+            type,
+            message,
+          },
+        });
+
+        const pass = () => ({
+          validateField: { field, ok: true, type: null, message: null },
+        });
+
+        // Basic field-level checks
+        try {
+          // Number helpers
+          const toNum = (v) =>
+            v === null || v === undefined || v === "" ? NaN : Number(v);
+
+          if (field === "notional") {
+            const n = toNum(value);
+            if (!Number.isFinite(n)) {
+              yield fail("Amount must be a number");
+              return;
+            }
+            if (n <= 0) {
+              yield fail("Amount must be positive");
+              return;
+            }
+            if (n > 1_000_000_000) {
+              yield fail("Exceeds firm trading limit", "SOFT");
+              return;
+            }
+            yield pass();
+            return;
+          }
+
+          if (field === "limitPrice" || field === "stopPrice") {
+            const p = toNum(value);
+            if (!Number.isFinite(p)) {
+              yield fail("Price must be a number");
+              return;
+            }
+            if (p <= 0) {
+              yield fail("Price must be positive");
+              return;
+            }
+            yield pass();
+            return;
+          }
+
+          if (field === "account" && account) {
+            const accounts = readJSON("accounts.json") || [];
+            const exists = accounts.some(
+              (a) => String(a.sdsId) === String(account)
+            );
+            if (!exists) {
+              yield fail("Account not available");
+              return;
+            }
+            yield pass();
+            return;
+          }
+
+          if (field === "liquidityPool" && liquidityPool) {
+            const otp = readJSON("orderTypesWithPools.json") || [];
+            const allPools = new Set();
+            otp.forEach((ot) =>
+              (ot.liquidityPools || []).forEach((p) => allPools.add(p.value))
+            );
+            if (!allPools.has(liquidityPool)) {
+              yield fail("Liquidity pool not available");
+              return;
+            }
+            yield pass();
+            return;
+          }
+
+          if (field === "symbol" && symbol) {
+            const ccy = readJSON("currencyPairs.json") || [];
+            const exists = ccy.some((cp) => cp.symbol === symbol);
+            if (!exists) {
+              yield fail("Currency pair not available");
+              return;
+            }
+            yield pass();
+            return;
+          }
+
+          // Default: pass
+          yield pass();
+        } catch (e) {
+          console.error("[validateField] Error:", e);
+          yield fail("Validation error, please retry");
+        }
+      },
+    },
     orderData: {
       subscribe: async function* (_, { orderId }) {
         console.log(`[SUB] Order data subscription for ${orderId}`);
@@ -390,7 +492,8 @@ export const resolvers = {
         // Emit method exposed for mutations to broadcast immediately
         const iterator = {
           next: () => {
-            if (!active) return Promise.resolve({ value: undefined, done: true });
+            if (!active)
+              return Promise.resolve({ value: undefined, done: true });
             if (queue.length > 0) {
               return Promise.resolve({ value: queue.shift(), done: false });
             }
@@ -430,7 +533,7 @@ export const resolvers = {
           const prefs = readJSON("userPreferences.json") || {
             defaultGlobalAccount: null,
           };
-            push({ globalUserPreferencesStream: prefs });
+          push({ globalUserPreferencesStream: prefs });
         }, 5000);
 
         return iterator;
