@@ -92,7 +92,7 @@ export interface InitialOrderSlice {
 export interface UserInteractionSlice {
   /** User-modified field values (overlay on baseValues) */
   dirtyValues: Partial<OrderStateData>;
-  /** Fields the user has interacted with (for error display) */
+  /** Fields the user has interacted with (tracked but not currently used for error gating) */
   touchedFields: Record<string, boolean>;
   /** Update a single field value */
   setFieldValue: <K extends keyof OrderStateData>(
@@ -101,8 +101,6 @@ export interface UserInteractionSlice {
   ) => void;
   /** Reset all user interactions (for "New Order" flow) */
   resetFormInteractions: () => void;
-  /** Mark all fields as touched (for submit validation) */
-  setAllTouched: () => void;
 }
 
 /**

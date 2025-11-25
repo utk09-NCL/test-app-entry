@@ -7,6 +7,8 @@ import { GATOR_DATA_SUBSCRIPTION } from "../../graphql/subscriptions";
 import { useOrderEntryStore } from "../../store";
 import { isNdf, isOnshore } from "../../utils/currencyPairHelpers";
 
+import { VerticalSpacer } from "./VerticalSpacer";
+
 import styles from "./TickingPrice.module.scss";
 
 /**
@@ -33,9 +35,9 @@ export interface PriceData {
  *
  * Features:
  * - Displays both bid (SELL) and ask (BUY) prices
- * - Visual indicators for price movement (green up, red down)
  * - Updates store with current prices for use by LimitPriceWithCheckbox
  * - Re-initializes when symbol changes
+ * - Skips subscription when symbol or currency pair is invalid
  *
  * @example
  * ```tsx
@@ -43,11 +45,9 @@ export interface PriceData {
  * ```
  */
 export const TickingPrice = ({ symbol }: TickingPriceProps) => {
-  // Local state for buy/sell prices and directional movement flags
+  // Local state for buy/sell prices
   const [buyPrice, setBuyPrice] = useState<number>(PRICE_CONFIG.INITIAL_BUY_PRICE);
   const [sellPrice, setSellPrice] = useState<number>(PRICE_CONFIG.INITIAL_SELL_PRICE);
-  const [buyIsUp, setBuyIsUp] = useState(true);
-  const [sellIsUp, setSellIsUp] = useState(true);
 
   // Get current currency pair from store to determine NDF/Onshore status
   const currencyPairs = useOrderEntryStore((s) => s.currencyPairs);
@@ -59,6 +59,7 @@ export const TickingPrice = ({ symbol }: TickingPriceProps) => {
   /**
    * Subscribe to real-time price feed from GATOR.
    * Re-subscribes when symbol changes.
+   * Skips subscription if symbol is empty or currency pair is not found.
    */
   useSubscription(GATOR_DATA_SUBSCRIPTION, {
     variables: {
@@ -71,14 +72,13 @@ export const TickingPrice = ({ symbol }: TickingPriceProps) => {
         markets: ["GATOR"],
       },
     },
+    skip: !symbol || !currentPair, // Skip subscription for invalid symbols
     fetchPolicy: "no-cache",
     onData: ({ data }) => {
       const payload = data.data;
       if (payload?.gatorData) {
         const newBuyPrice = payload.gatorData.topOfTheBookBuy.precisionValue;
         const newSellPrice = payload.gatorData.topOfTheBookSell.precisionValue;
-        setBuyIsUp(newBuyPrice >= buyPrice);
-        setSellIsUp(newSellPrice >= sellPrice);
         setBuyPrice(newBuyPrice);
         setSellPrice(newSellPrice);
         setCurrentPrices(newBuyPrice, newSellPrice);
@@ -98,20 +98,14 @@ export const TickingPrice = ({ symbol }: TickingPriceProps) => {
       {/* BUY price box */}
       <div className={styles.priceBox} data-testid="top-of-book-buy-price">
         <div className={styles.label}>BUY</div>
-        {/* Apply green/red styling based on price direction */}
-        <div className={`${styles.price} ${buyIsUp ? styles.up : styles.down}`}>
-          {formattedBuyPrice}
-        </div>
+        <div className={styles.price}>{formattedBuyPrice}</div>
       </div>
-      {/* Spacer between prices */}
-      {/* // TODO: Replace with a verical separator */}
-      <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
+      {/* Vertical separator between prices */}
+      <VerticalSpacer />
       {/* SELL price box */}
       <div className={styles.priceBox} data-testid="top-of-book-sell-price">
         <div className={styles.label}>SELL</div>
-        <div className={`${styles.price} ${sellIsUp ? styles.up : styles.down}`}>
-          {formattedSellPrice}
-        </div>
+        <div className={styles.price}>{formattedSellPrice}</div>
       </div>
     </div>
   );

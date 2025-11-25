@@ -73,17 +73,4 @@ export const createUserInteractionSlice: StateCreator<
       state.serverErrors = {};
       state.warnings = {};
     }),
-
-  /**
-   * Mark all fields as touched (for submit validation).
-   * When user clicks Submit, we want to show errors on all invalid fields,
-   * even ones they haven't touched yet.
-   *
-   * TODO: Implement by iterating over all fields in current order config.
-   */
-  setAllTouched: () =>
-    set((_state) => {
-      // Simplified - full implementation would iterate ORDER_TYPES[orderType].fields
-      // and mark each as touched in touchedFields
-    }),
 });

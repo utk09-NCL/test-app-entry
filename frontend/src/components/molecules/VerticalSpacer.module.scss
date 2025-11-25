@@ -1,0 +1,16 @@
+/**
+ * VerticalSpacer Styles
+ *
+ * A vertical divider line for separating horizontal elements.
+ */
+
+@use "../../styles/variables" as *;
+
+.spacer {
+  width: 1px;
+  height: 100%;
+  min-height: 2.5rem;
+  background-color: $oe-color-border;
+  margin: 0 1rem;
+  align-self: stretch;
+}

@@ -37,6 +37,7 @@ import { useOrderEntryStore } from "../../store";
 import { OrderStateData } from "../../types/domain";
 import { Input } from "../atoms/Input";
 import { Select } from "../atoms/Select";
+import { Spinner } from "../atoms/Spinner";
 import { AmountWithCurrency } from "../molecules/AmountWithCurrency";
 import { LimitPriceWithCheckbox } from "../molecules/LimitPriceWithCheckbox";
 import { RowComponent } from "../molecules/RowComponent";
@@ -82,6 +83,7 @@ export const FieldController = ({ fieldKey, rowIndex }: FieldControllerProps) =>
   const accounts = useOrderEntryStore((s) => s.accounts);
   const pools = useOrderEntryStore((s) => s.pools);
   const currencyPairs = useOrderEntryStore((s) => s.currencyPairs);
+  const isLoadingRefData = useOrderEntryStore((s) => s.isLoadingRefData);
 
   // ===== Configuration Lookup =====
   // Get field definition from registry (label, component type, props)
@@ -130,8 +132,9 @@ export const FieldController = ({ fieldKey, rowIndex }: FieldControllerProps) =>
   const handleChange = (val: string | number | undefined) => {
     setFieldValue(fieldKey, val);
     // Re-validate reference data after field change
-    // This clears refDataError if user selects a valid option
-    setTimeout(() => validateRefData(), 0);
+    // validateRefData runs synchronously and reads from the store,
+    // which is already updated by setFieldValue (Zustand updates are synchronous)
+    validateRefData();
   };
 
   // ===== Component Selection =====
@@ -221,6 +224,21 @@ export const FieldController = ({ fieldKey, rowIndex }: FieldControllerProps) =>
     // Dropdown selector
     // Used for: account, liquidityPool, timeInForce
     case "Select": {
+      // Check if this dropdown depends on reference data and is still loading
+      const isRefDataSelect = fieldKey === "account" || fieldKey === "liquidityPool";
+      const isLoadingOptions = isRefDataSelect && isLoadingRefData;
+
+      // Show loading spinner while reference data is being fetched
+      if (isLoadingOptions) {
+        inputEl = (
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <Spinner size="sm" data-testid={`spinner-${fieldKey}`} />
+            <span style={{ color: "#94a3b8", fontSize: "0.875rem" }}>Loading...</span>
+          </div>
+        );
+        break;
+      }
+
       // Start with options from field definition (if any)
       let opts: { label: string; value: string }[] =
         (def.props?.options as { label: string; value: string }[]) || [];

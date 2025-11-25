@@ -14,10 +14,11 @@
 6. [File Directory Guide](#file-directory-guide)
 7. [Configuration-Driven UI System](#configuration-driven-ui-system)
 8. [Validation System](#validation-system)
-9. [Mock Data & Placeholders](#mock-data--placeholders)
-10. [Server-Side Validation Structure](#server-side-validation-structure)
-11. [Things to Remember](#things-to-remember)
-12. [Upcoming Features](#upcoming-features)
+9. [Toast Notification System](#toast-notification-system)
+10. [Mock Data & Placeholders](#mock-data--placeholders)
+11. [Server-Side Validation Structure](#server-side-validation-structure)
+12. [Things to Remember](#things-to-remember)
+13. [Upcoming Features](#upcoming-features)
 
 ---
 
@@ -331,7 +332,9 @@ useOrderEntryStore (Bound Store)
 
 - `setStatus(status)`: Update app status
 - `setEditMode(mode)`: Change edit mode
-- `showToast(message)`: Display notification
+- `setCurrentOrderId(orderId)`: Set order ID after submission
+- `setOrderStatus(status)`: Update order status from subscription
+- `setToast(message)`: Display notification toast
 
 **When to use**:
 
@@ -393,12 +396,12 @@ useOrderEntryStore (Bound Store)
 **State**:
 
 - `dirtyValues`: Fields the user has edited
-- `touchedFields`: Fields the user has interacted with
+- `touchedFields`: Fields the user has interacted with (tracked but not used for error gating - errors shown immediately)
 
 **Actions**:
 
 - `setFieldValue(field, value)`: Update a field (called by FieldController)
-- `resetFormInteractions()`: Clear all user edits
+- `resetFormInteractions()`: Clear all user edits (dirtyValues, touchedFields, errors, serverErrors, warnings)
 
 **When to use**:
 
@@ -473,6 +476,7 @@ FieldController calls setFieldValue("notional", 1000000)
 UserInteractionSlice updates:
   dirtyValues = { notional: 1000000 }
   touchedFields = { notional: true }
+  Clears errors/serverErrors for notional (if any)
                 ↓
 useDebounce hook waits 50ms
                 ↓
@@ -480,10 +484,10 @@ Calls validateField("notional", 1000000)
                 ↓
 ComputedSlice runs:
   1. Sync validation (Valibot schema)
-  2. Async validation (server check - mocked)
-  3. Updates errors if invalid
+  2. Async validation (GraphQL subscription to server)
+  3. Updates errors/serverErrors/warnings based on result
                 ↓
-FieldController re-renders showing error (if any)
+FieldController re-renders showing error/warning (if any)
 ```
 
 ---
@@ -815,7 +819,7 @@ useEffect(() => {
    - setStatus("READY")
    - setEditMode("viewing")
    - setBaseValues({ orderId }) - add orderId to base
-   - resetFormInteractions() - clear dirty values
+   - resetFormInteractions() - clear dirtyValues, touchedFields, errors, serverErrors, warnings
                 ↓
 10. UI switches to ReadOnlyView
     - Shows order details
@@ -866,7 +870,7 @@ useEffect(() => {
                 ↓
 11. Update state:
     - setEditMode("viewing")
-    - resetFormInteractions()
+    - resetFormInteractions() - clear dirtyValues, touchedFields, errors, serverErrors, warnings
                 ↓
 12. UI returns to ReadOnlyView
 ```
@@ -895,7 +899,7 @@ useEffect(() => {
                 ↓
 5. Calls:
    a. setBaseValues({ symbol: "EURUSD", notional: 1000000, ... })
-   b. resetFormInteractions() - clear user edits
+   b. resetFormInteractions() - clear dirtyValues, touchedFields, errors, serverErrors, warnings
                 ↓
 6. getDerivedValues() now returns only baseValues (Layer 1)
                 ↓
@@ -1347,6 +1351,305 @@ if (get().validationRequestIds[field] === currentId) {
   state.errors[field] = errorMessage;
 }
 ```
+
+---
+
+## Toast Notification System
+
+### Overview
+
+The application uses a **global toast notification system** to provide user feedback for actions like order submission, validation errors, and system events. Toast notifications appear at the bottom of the main card and can be dismissed by clicking the close button.
+
+### Current Implementation
+
+**Location**: Rendered in `MainLayout.tsx` (template component)
+
+**State Management**: Stored in AppSlice (`toastMessage`)
+
+**Display**: Positioned absolutely at bottom of card, slides up with animation
+
+### Toast Structure
+
+**Type Definition** (`types/store.ts`):
+
+```typescript
+interface AppSlice {
+  toastMessage: {
+    type: "success" | "error" | "info";
+    text: string;
+  } | null;
+
+  setToast: (msg: { type: "success" | "error" | "info"; text: string } | null) => void;
+}
+```
+
+**State**:
+
+- `null`: No toast displayed
+- `{ type, text }`: Toast displayed with specific styling
+
+### Usage Examples
+
+#### Setting a Toast
+
+```typescript
+// From any component with store access
+const setToast = useOrderEntryStore((s) => s.setToast);
+
+// Success notification
+setToast({ type: "success", text: "Order submitted successfully" });
+
+// Error notification
+setToast({ type: "error", text: "Submission failed - invalid notional" });
+
+// Info notification
+setToast({ type: "info", text: "Price updated" });
+```
+
+#### Clearing a Toast
+
+```typescript
+// User clicks X button or programmatic dismissal
+setToast(null);
+```
+
+### Current Usage in Codebase
+
+| Location | Trigger | Type | Message |
+|----------|---------|------|---------|
+| `createComputedSlice.ts` (submitOrder) | Order created successfully | `success` | "Order Created: ORD-XXXX-X" |
+| `createComputedSlice.ts` (submitOrder) | Order amendment success | `success` | "Order Updated: ORD-XXXX-X" |
+| `createComputedSlice.ts` (submitOrder) | GraphQL mutation returns FAILURE | `error` | "Submission Failed" |
+| `createComputedSlice.ts` (submitOrder) | Network/GraphQL error | `error` | "Submission Failed" |
+| `useOrderTracking.ts` | Order status REJECTED | `error` | "Order Rejected: {reason}" |
+| `useOrderTracking.ts` | Order status FILLED | `success` | "Order Filled" |
+| `useOrderTracking.ts` | Order status CANCELLED | `info` | "Order Cancelled" |
+
+### Visual Design
+
+**Styling** (`MainLayout.module.scss`):
+
+```scss
+.toast {
+  position: absolute;
+  bottom: $oe-spacing-lg;
+  left: $oe-spacing-lg;
+  right: $oe-spacing-lg;
+  padding: $oe-spacing-md;
+  border-radius: $oe-radius-sm;
+  box-shadow: $oe-shadow-lg;
+  animation: slideUp $oe-transition-normal ease-out;
+
+  &.error {
+    background-color: $oe-color-error-bg;
+    color: $oe-color-error-light;
+  }
+
+  &.success {
+    background-color: $oe-color-success-bg;
+    color: $oe-color-success-light;
+  }
+
+  &.info {
+    background-color: $oe-color-info-bg;
+    color: $oe-color-info-light;
+  }
+}
+```
+
+**Animation**: Slides up from bottom with fade-in effect
+
+**Dismissal**: User must click X button (no auto-dismiss currently)
+
+### Migration Strategies for Future Enhancements
+
+#### Option 1: Convert Toast to Inline Error (Field-Level)
+
+**Use Case**: When server validation returns a blocking error that should be displayed inline
+
+**Implementation**:
+
+```typescript
+// Instead of:
+setToast({ type: "error", text: "Invalid notional amount" });
+
+// Use inline error:
+state.serverErrors.notional = "Invalid notional amount";
+```
+
+**Benefits**:
+
+- Error appears next to the problematic field
+- Follows existing validation pattern
+- No modal/toast dismissal needed
+
+**Considerations**:
+
+- Only works for field-specific errors
+- Global errors (network failures, auth errors) still need toast/modal
+
+---
+
+#### Option 2: Add Modal Dialog for Critical Actions
+
+**Use Case**: Server sends SOFT warning that requires user acknowledgment before proceeding
+
+**Example Scenario**:
+
+1. User submits large notional (e.g., $100M)
+2. Server returns SOFT warning: "Trade exceeds typical size for this pair"
+3. Show modal: "Are you sure you want to proceed with this large trade?"
+4. User confirms → resubmit with acknowledgment flag
+5. User cancels → stay in form
+
+**Implementation Approach**:
+
+Add new state to AppSlice:
+
+```typescript
+interface AppSlice {
+  // Existing toast
+  toastMessage: { type: "success" | "error" | "info"; text: string } | null;
+  setToast: (msg) => void;
+
+  // New modal state
+  modalDialog: {
+    type: "confirm" | "alert" | "warning";
+    title: string;
+    message: string;
+    onConfirm?: () => void;
+    onCancel?: () => void;
+  } | null;
+  setModal: (dialog) => void;
+}
+```
+
+Create modal component in `organisms/`:
+
+```tsx
+// organisms/ModalDialog.tsx
+export const ModalDialog = () => {
+  const modal = useOrderEntryStore((s) => s.modalDialog);
+  const setModal = useOrderEntryStore((s) => s.setModal);
+
+  if (!modal) return null;
+
+  return (
+    <div className={styles.overlay}>
+      <div className={styles.modal}>
+        <h3>{modal.title}</h3>
+        <p>{modal.message}</p>
+        <div className={styles.actions}>
+          {modal.onCancel && (
+            <button onClick={() => { modal.onCancel?.(); setModal(null); }}>
+              Cancel
+            </button>
+          )}
+          {modal.onConfirm && (
+            <button onClick={() => { modal.onConfirm?.(); setModal(null); }}>
+              Confirm
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+```
+
+Usage for warning acknowledgment:
+
+```typescript
+// In submitOrder when server returns SOFT warnings:
+if (hasWarnings) {
+  setModal({
+    type: "warning",
+    title: "Confirm Large Trade",
+    message: "Your notional exceeds typical trade size. Continue?",
+    onConfirm: () => {
+      // Resubmit with acknowledgment
+      submitOrderMutation({
+        ...orderData,
+        acknowledgeWarnings: true
+      });
+    },
+    onCancel: () => {
+      // Stay in form, keep warnings visible
+      console.log("User cancelled large trade");
+    }
+  });
+}
+```
+
+**Benefits**:
+
+- Forces explicit user acknowledgment
+- Prevents accidental submission of flagged orders
+- Provides clear call-to-action buttons
+- Can include detailed warning messages
+
+**Considerations**:
+
+- Need to update GraphQL mutation to accept `acknowledgeWarnings` flag
+- Backend must track which warnings were shown vs acknowledged
+- More intrusive than inline warnings (appropriate for critical issues)
+
+---
+
+#### Option 3: Hybrid Approach (Recommended)
+
+**Strategy**: Use different feedback mechanisms based on severity:
+
+| Severity | Feedback Mechanism | When to Use |
+|----------|-------------------|-------------|
+| **Field Validation (Client)** | Inline error (red) | Invalid input format, type errors |
+| **Field Validation (Server HARD)** | Inline error (red) | Blocking business rules (exceeds limit) |
+| **Field Validation (Server SOFT)** | Inline warning (yellow) | Advisory messages (large trade) |
+| **Critical Warnings** | Modal dialog | Requires explicit acknowledgment |
+| **Success Messages** | Toast notification | Non-blocking feedback |
+| **Network/System Errors** | Toast notification | Global errors not tied to fields |
+
+**Implementation**:
+
+```typescript
+// Decision tree in submitOrder:
+if (hasHardErrors) {
+  // Show inline errors (already implemented)
+  return;
+}
+
+if (hasCriticalWarnings) {
+  // Show modal for acknowledgment
+  setModal({
+    type: "warning",
+    title: "Confirm Action",
+    message: criticalWarning,
+    onConfirm: () => submitWithAcknowledgment()
+  });
+  return;
+}
+
+if (hasSoftWarnings) {
+  // Show inline warnings (already implemented)
+  // User can still submit
+}
+
+// On success
+setToast({ type: "success", text: "Order submitted" });
+```
+
+---
+
+### Files to Modify for Migration
+
+| Change | Files to Update |
+|--------|----------------|
+| Add modal state | `types/store.ts`, `createAppSlice.ts` |
+| Create modal component | `organisms/ModalDialog.tsx`, `organisms/ModalDialog.module.scss` |
+| Render modal in layout | `templates/MainLayout.tsx` |
+| Update submission logic | `createComputedSlice.ts` (submitOrder) |
+| Backend acknowledgment | `backend/schema/resolvers.js` (createOrder mutation) |
+| GraphQL schema | `backend/schema/typeDefs.js` (add acknowledgeWarnings field) |
 
 ---
 

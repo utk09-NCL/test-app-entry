@@ -27,10 +27,13 @@
  * }, [debouncedSearch]);
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Debounce a value - delays updates until value stabilizes.
+ *
+ * This hook prevents memory leaks by tracking component mount state
+ * and avoiding state updates after unmount.
  *
  * @param value - The value to debounce
  * @param delay - Delay in milliseconds before updating (e.g., 300)
@@ -39,10 +42,26 @@ import { useEffect, useState } from "react";
 export function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
+  // Track whether component is mounted to prevent state updates after unmount
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    // Mark as mounted on initial render
+    isMountedRef.current = true;
+
+    // Cleanup: Mark as unmounted when component unmounts
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   useEffect(() => {
     // Set a timeout to update the debounced value after delay
     const handler = setTimeout(() => {
-      setDebouncedValue(value);
+      // Only update state if component is still mounted
+      if (isMountedRef.current) {
+        setDebouncedValue(value);
+      }
     }, delay);
 
     // Cleanup: Clear timeout if value changes before delay completes

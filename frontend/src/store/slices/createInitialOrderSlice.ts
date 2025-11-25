@@ -30,6 +30,9 @@ import { BoundState, InitialOrderSlice } from "../../types/store";
 /**
  * Default order values when app starts.
  * These represent a "typical" order for quick testing/demos.
+ *
+ * Note: `account` is intentionally omitted as the actual account should come from server reference data or user preferences.
+ * `liquidityPool` is set to "Hybrid" as the default pool.
  */
 const DEFAULT_VALUES = {
   symbol: "GBPUSD", // Most commonly traded pair
@@ -37,8 +40,8 @@ const DEFAULT_VALUES = {
   orderType: "LIMIT" as const, // Safest default (requires price)
   timeInForce: "GTC" as const, // Good Till Cancel (most common)
   notional: 1000000, // 1 million units (standard institutional size)
-  liquidityPool: "GATOR_POOL_1", // Default liquidity source
-  account: "ACC-001", // Default trading account
+  liquidityPool: "Hybrid", // Default liquidity source
+  // account is intentionally omitted - will be populated from server data or user preferences
 };
 
 export const createInitialOrderSlice: StateCreator<

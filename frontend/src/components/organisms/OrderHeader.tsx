@@ -42,11 +42,15 @@ export const OrderHeader = () => {
   const setFieldValue = useOrderEntryStore((s) => s.setFieldValue);
   const validateRefData = useOrderEntryStore((s) => s.validateRefData);
 
+  // Determine if symbol selector should be disabled (read-only in viewing/amending modes)
+  const isReadOnly = editMode === "viewing" || editMode === "amending";
+
   // Handle symbol change
   const handleSymbolChange = (newSymbol: string) => {
     setFieldValue("symbol", newSymbol);
     // Re-validate reference data after change
-    setTimeout(() => validateRefData(), 0);
+    // Zustand updates are synchronous, so no setTimeout needed
+    validateRefData();
   };
 
   // Build currency pair options
@@ -92,7 +96,7 @@ export const OrderHeader = () => {
             onChange={(e) => handleSymbolChange(e.target.value)}
             className={styles.selectOverride}
             hasError={!!refDataError}
-            disabled={editMode === "amending" && !!refDataError}
+            disabled={isReadOnly}
           >
             {/* Render all available currency pairs */}
             {symbolOptions.map((p) => (
