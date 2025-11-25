@@ -2,19 +2,22 @@
  * ReorderableFieldList Component - Drag-and-drop container for form fields
  *
  * Wraps form fields in a DndContext to enable drag-and-drop reordering.
- * Handles the sortable logic and auto-saves changes to localStorage.
+ * Handles the sortable logic and auto-saves changes via the field order hook.
  *
  * Features:
  * - Drag and drop reordering of form fields
  * - Smooth animations during drag operations
- * - Auto-save to localStorage on reorder
+ * - Auto-save on reorder via props callback
  * - Collision detection for accurate drop targets
  * - Keyboard accessibility support
+ *
+ * Props pattern: Receives field order state/actions via props from OrderForm
+ * to ensure single source of truth (fixes state sync issues).
  *
  * Used by: OrderForm to render the dynamic field grid
  */
 
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 
 import {
   closestCenter,
@@ -31,7 +34,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 
-import { useFieldOrder } from "../../hooks/useFieldOrder";
+import { FieldOrderHookReturn } from "../../hooks/useFieldOrder";
 import { OrderStateData, OrderType } from "../../types/domain";
 
 import { SortableFieldItem } from "./SortableFieldItem";
@@ -43,6 +46,8 @@ interface ReorderableFieldListProps {
   isViewMode: boolean;
   /** Render function for each field */
   renderField: (fieldKey: keyof OrderStateData, index: number) => React.ReactNode;
+  /** Field order state and actions (passed from parent for single source of truth) */
+  fieldOrder: FieldOrderHookReturn;
 }
 
 /**
@@ -52,11 +57,16 @@ export const ReorderableFieldList = ({
   orderType,
   isViewMode,
   renderField,
+  fieldOrder,
 }: ReorderableFieldListProps) => {
-  const { isReorderMode, getFieldOrder, updateFieldOrder } = useFieldOrder();
+  const { isReorderMode, getFieldOrder, updateFieldOrder } = fieldOrder;
 
   // Get current field order for this order type
   const fields = getFieldOrder(orderType, isViewMode);
+
+  // Memoize sortable items array to avoid re-creating on every render
+  // This is properly typed as string[] which SortableContext expects
+  const sortableItems = useMemo<string[]>(() => fields.map((f) => f as string), [fields]);
 
   // Configure sensors for drag detection
   const sensors = useSensors(
@@ -88,7 +98,7 @@ export const ReorderableFieldList = ({
           const [movedItem] = newFields.splice(oldIndex, 1);
           newFields.splice(newIndex, 0, movedItem);
 
-          // Save to localStorage
+          // Save via hook callback
           updateFieldOrder(orderType, newFields);
         }
       }
@@ -101,7 +111,7 @@ export const ReorderableFieldList = ({
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <SortableContext items={fields as string[]} strategy={verticalListSortingStrategy}>
+      <SortableContext items={sortableItems} strategy={verticalListSortingStrategy}>
         {fields.map((fieldKey, index) => {
           // 'status' field cannot be reordered (always pinned at top)
           const isReorderable = fieldKey !== "status";

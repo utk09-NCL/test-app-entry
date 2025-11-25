@@ -1,3 +1,5 @@
+@use "../../styles/variables" as *;
+
 /**
  * SortableFieldItem Styles
  */
@@ -11,13 +13,14 @@
   &.reorderMode {
     // Add slight left padding to accommodate drag handle
     padding-left: 0;
+    align-items: center;
   }
 
   &.dragging {
     // Visual feedback when being dragged
-    background: var(--color-bg-elevated, #f8fafc);
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background: $oe-color-surface;
+    border-radius: $oe-radius-lg;
+    box-shadow: $oe-shadow-md;
   }
 }
 

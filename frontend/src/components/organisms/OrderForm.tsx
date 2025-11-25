@@ -14,9 +14,14 @@
  * Architecture:
  * 1. Read current orderType from store (derived from baseValues + dirtyValues)
  * 2. Look up field configuration for that order type
- * 3. Apply user's custom field order (from localStorage) if available
+ * 3. Apply user's custom field order (from Zustand store) if available
  * 4. Render fields via ReorderableFieldList for drag-and-drop support
  * 5. Include OrderFooter with action buttons at the bottom
+ *
+ * Props Pattern:
+ * - Field order state is lifted to this component via useFieldOrder hook
+ * - Passed as props to ReorderableFieldList and ReorderModeBanner
+ * - Ensures single source of truth (fixes state sync issues)
  *
  * @see ORDER_TYPES in config/orderConfig.ts for field configurations
  * @see FieldController for individual field rendering logic
@@ -26,6 +31,7 @@
 import { useCallback } from "react";
 
 import { ORDER_TYPES } from "../../config/orderConfig";
+import { useFieldOrder } from "../../hooks/useFieldOrder";
 import { useOrderEntryStore } from "../../store";
 import { OrderStateData, OrderType } from "../../types/domain";
 import { Select } from "../atoms/Select";
@@ -51,6 +57,10 @@ export const OrderForm = () => {
 
   // Get entitled order types from server (user's permissions)
   const entitledOrderTypes = useOrderEntryStore((s) => s.entitledOrderTypes);
+
+  // Field order state and actions - lifted here for single source of truth
+  // Passed as props to ReorderableFieldList and ReorderModeBanner
+  const fieldOrder = useFieldOrder();
 
   // Order Type selector itself should be disabled in viewing/amending modes
   const isReadOnly = editMode === "viewing" || editMode === "amending";
@@ -110,17 +120,18 @@ export const OrderForm = () => {
 
       {/* Dynamic Field Grid with Drag-and-Drop Support */}
       {/* Uses ReorderableFieldList for drag-and-drop reordering */}
-      {/* Field order is determined by useFieldOrder hook (config + localStorage) */}
+      {/* Field order is determined by Zustand store + localStorage */}
       <div className={styles.grid} data-testid="order-form-fields">
         <ReorderableFieldList
           orderType={orderType}
           isViewMode={isReadOnly}
           renderField={renderField}
+          fieldOrder={fieldOrder}
         />
       </div>
 
       {/* Reorder Mode Banner - Shows when reorder mode is active */}
-      <ReorderModeBanner orderType={orderType} />
+      <ReorderModeBanner orderType={orderType} fieldOrder={fieldOrder} />
 
       {/* Action Buttons (Submit/Amend) */}
       {/* Rendered at the bottom of the form */}

@@ -6,13 +6,17 @@
  *
  * Features:
  * - Shows only when reorder mode is active
- * - Reset to default button for current order type
+ * - Reset to Default button - resets draft to config default (doesn't persist)
+ * - Save button - persists draft to localStorage and exits reorder mode
  * - Subtle, non-intrusive design
+ *
+ * Props pattern: Receives field order state/actions via props from OrderForm
+ * to ensure single source of truth (fixes state sync issues).
  *
  * Used by: OrderForm, placed above OrderFooter
  */
 
-import { useFieldOrder } from "../../hooks/useFieldOrder";
+import { FieldOrderHookReturn } from "../../hooks/useFieldOrder";
 import { OrderType } from "../../types/domain";
 
 import styles from "./ReorderModeBanner.module.scss";
@@ -20,26 +24,48 @@ import styles from "./ReorderModeBanner.module.scss";
 interface ReorderModeBannerProps {
   /** Current order type (for reset functionality) */
   orderType: OrderType;
+  /** Field order state and actions (passed from parent for single source of truth) */
+  fieldOrder: FieldOrderHookReturn;
 }
+
+/**
+ * DragIcon - SVG drag handle icon (matches DragHandle component)
+ */
+const DragIcon = () => (
+  <svg
+    width="12"
+    height="18"
+    viewBox="0 0 12 18"
+    fill="currentColor"
+    xmlns="http://www.w3.org/2000/svg"
+    className={styles.icon}
+    aria-hidden="true"
+  >
+    <circle cx="3" cy="3" r="1.5" />
+    <circle cx="9" cy="3" r="1.5" />
+    <circle cx="3" cy="9" r="1.5" />
+    <circle cx="9" cy="9" r="1.5" />
+    <circle cx="3" cy="15" r="1.5" />
+    <circle cx="9" cy="15" r="1.5" />
+  </svg>
+);
 
 /**
  * ReorderModeBanner - Indicator and controls for reorder mode
  */
-export const ReorderModeBanner = ({ orderType }: ReorderModeBannerProps) => {
-  const { isReorderMode, hasCustomOrder, resetToDefault } = useFieldOrder();
+export const ReorderModeBanner = ({ orderType, fieldOrder }: ReorderModeBannerProps) => {
+  const { isReorderMode, resetToDefault, saveAndExit } = fieldOrder;
 
   // Only show when reorder mode is active
   if (!isReorderMode) return null;
 
-  const showReset = hasCustomOrder(orderType);
-
   return (
     <div className={styles.banner} data-testid="reorder-mode-banner">
       <div className={styles.content}>
-        <span className={styles.icon}>⠿</span>
-        <span className={styles.text}>Reorder Mode Active — Drag fields to rearrange</span>
+        <DragIcon />
+        <span className={styles.text}>Reorder mode active, drag fields to rearrange</span>
       </div>
-      {showReset && (
+      <div className={styles.actions}>
         <button
           type="button"
           className={styles.resetButton}
@@ -48,7 +74,15 @@ export const ReorderModeBanner = ({ orderType }: ReorderModeBannerProps) => {
         >
           Reset to Default
         </button>
-      )}
+        <button
+          type="button"
+          className={styles.saveButton}
+          onClick={saveAndExit}
+          data-testid="save-field-order"
+        >
+          Save
+        </button>
+      </div>
     </div>
   );
 };

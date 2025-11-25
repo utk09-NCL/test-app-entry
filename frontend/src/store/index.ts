@@ -7,6 +7,7 @@ import { BoundState } from "../types/store";
 import { loggerMiddleware } from "./middleware/logger";
 import { createAppSlice } from "./slices/createAppSlice";
 import { createComputedSlice } from "./slices/createComputedSlice";
+import { createFieldOrderSlice } from "./slices/createFieldOrderSlice";
 import { createInitialOrderSlice } from "./slices/createInitialOrderSlice";
 import { createPriceSlice } from "./slices/createPriceSlice";
 import { createRefDataSlice } from "./slices/createRefDataSlice";
@@ -22,6 +23,7 @@ export const useOrderEntryStore = create<BoundState>()(
         ...createUserInteractionSlice(...a),
         ...createComputedSlice(...a),
         ...createPriceSlice(...a),
+        ...createFieldOrderSlice(...a),
       })),
       { name: "Order_Entry_Store" }
     )

@@ -13,12 +13,13 @@
 5. [Application Workflows](#application-workflows)
 6. [File Directory Guide](#file-directory-guide)
 7. [Configuration-Driven UI System](#configuration-driven-ui-system)
-8. [Validation System](#validation-system)
-9. [Toast Notification System](#toast-notification-system)
-10. [Mock Data & Placeholders](#mock-data--placeholders)
-11. [Server-Side Validation Structure](#server-side-validation-structure)
-12. [Things to Remember](#things-to-remember)
-13. [Upcoming Features](#upcoming-features)
+8. [Field Reordering System](#field-reordering-system)
+9. [Validation System](#validation-system)
+10. [Toast Notification System](#toast-notification-system)
+11. [Mock Data & Placeholders](#mock-data--placeholders)
+12. [Server-Side Validation Structure](#server-side-validation-structure)
+13. [Things to Remember](#things-to-remember)
+14. [Upcoming Features](#upcoming-features)
 
 ---
 
@@ -1085,6 +1086,16 @@ useEffect(() => {
 - **Design tokens**: `/src/styles/variables.scss`
 - **Component styles**: `/src/components/**/*.module.scss`
 
+#### To Change Field Reordering
+
+- **Field order hook**: `/src/hooks/useFieldOrder.ts`
+- **Drag handle**: `/src/components/atoms/DragHandle.tsx`
+- **Sortable wrapper**: `/src/components/molecules/SortableFieldItem.tsx`
+- **Reorderable list**: `/src/components/molecules/ReorderableFieldList.tsx`
+- **Reorder mode banner**: `/src/components/molecules/ReorderModeBanner.tsx`
+- **LocalStorage key (mode)**: `fx-order-reorder-mode`
+- **LocalStorage key (orders)**: `fx-order-field-order`
+
 ---
 
 ## Configuration-Driven UI System
@@ -1148,6 +1159,218 @@ export const ORDER_TYPES: Record<OrderType, OrderConfig> = {
                 ↓
 6. Applies read-only logic based on editMode and editableFields
 ```
+
+---
+
+## Field Reordering System
+
+### Overview
+
+Users can customize the order of form fields per order type via drag-and-drop. This feature allows traders to arrange fields according to their workflow preferences.
+
+**Key Features**:
+
+- **Per Order Type**: Each order type (LIMIT, MARKET, etc.) has its own field order
+- **Drag and Drop**: Uses `@dnd-kit` for smooth drag-and-drop interactions
+- **Persistent**: Custom orders are saved to localStorage
+- **Intelligent Merging**: When config changes (new fields added), user preferences are preserved and new fields are appended
+
+### Enabling Reorder Mode
+
+Reorder mode is controlled via localStorage flag:
+
+```javascript
+// Enable reorder mode
+localStorage.setItem('fx-order-reorder-mode', 'true');
+
+// Disable reorder mode
+localStorage.setItem('fx-order-reorder-mode', 'false');
+```
+
+When enabled:
+
+- Drag handles (⠿) appear next to each field label
+- A blue banner appears above the Submit button
+- Fields can be dragged to new positions
+
+### Architecture
+
+#### Files Involved
+
+| File | Purpose |
+|------|---------|
+| `/src/store/slices/createFieldOrderSlice.ts` | Zustand slice with field order state and actions |
+| `/src/hooks/useFieldOrder.ts` | Thin wrapper hook around Zustand store |
+| `/src/components/molecules/ReorderableFieldList.tsx` | DndContext wrapper with sortable logic |
+| `/src/components/molecules/SortableFieldItem.tsx` | Individual draggable field wrapper |
+| `/src/components/atoms/DragHandle.tsx` | SVG drag handle icon (6 dots) |
+| `/src/components/molecules/ReorderModeBanner.tsx` | Banner with Reset/Save buttons |
+
+#### localStorage Structure
+
+```json
+{
+  "fx-order-field-order": {
+    "LIMIT": ["notional", "direction", "limitPrice", "account", "liquidityPool", "timeInForce"],
+    "MARKET": ["direction", "notional", "liquidityPool", "timeInForce", "account"]
+  },
+  "fx-order-reorder-mode": "true"
+}
+```
+
+### Zustand Store Integration
+
+Field order state is managed in the Zustand store via `createFieldOrderSlice.ts`:
+
+```typescript
+interface FieldOrderState {
+  // Persisted state (saved to localStorage)
+  fieldOrders: FieldOrderMap;
+
+  // Draft state (pending changes during reorder mode)
+  draftFieldOrders: FieldOrderMap;
+
+  // Mode flag
+  isReorderMode: boolean;
+}
+```
+
+**Key Actions**:
+
+| Action | Purpose |
+|--------|---------|
+| `updateFieldOrder(orderType, newOrder)` | Updates draft only (no persist) |
+| `saveFieldOrderAndExit()` | Persists draft to localStorage and exits reorder mode |
+| `cancelReorderMode()` | Discards draft changes and exits reorder mode |
+| `resetFieldOrderToDefault(orderType)` | Resets draft for order type to empty (uses config default) |
+
+### Draft State Architecture
+
+The system uses a **two-state pattern** for safe editing:
+
+1. **`fieldOrders`** - Persisted state saved to localStorage
+2. **`draftFieldOrders`** - Pending changes shown during reorder mode
+
+**Workflow**:
+
+1. User enables reorder mode → `draftFieldOrders` initialized from `fieldOrders`
+2. User drags fields → `updateFieldOrder()` updates draft only
+3. User clicks **Save** → `saveFieldOrderAndExit()` persists draft and exits
+4. User clicks **Reset** → `resetFieldOrderToDefault()` clears draft (shows config default)
+5. User clicks outside/closes → `cancelReorderMode()` discards draft
+
+This ensures changes are only persisted when explicitly saved.
+
+### useFieldOrder Hook
+
+**Purpose**: Thin wrapper around Zustand store for field order management
+
+**Returns**:
+
+```typescript
+{
+  // State
+  isReorderMode: boolean;           // Whether reorder mode is enabled
+
+  // Getters
+  getFieldOrder(orderType, isViewMode): string[];  // Get ordered fields (uses draft in reorder mode)
+  hasCustomOrder(orderType): boolean;              // Check if custom order exists in draft
+
+  // Actions
+  updateFieldOrder(orderType, newOrder): void;     // Update draft field order
+  resetToDefault(orderType): void;                 // Reset draft to config default
+  saveAndExit(): void;                             // Persist draft and exit reorder mode
+  cancelReorder(): void;                           // Discard draft and exit reorder mode
+}
+```
+
+### ReorderModeBanner UX
+
+When reorder mode is active, a banner displays with **two buttons**:
+
+| Button | Action | Description |
+|--------|--------|-------------|
+| **Reset to Default** | `resetToDefault()` | Resets draft to config order (does NOT persist) |
+| **Save** | `saveAndExit()` | Persists current draft order and exits reorder mode |
+
+Both buttons are always visible. The Reset button updates the draft immediately (user sees fields snap to config order), but changes are only persisted when Save is clicked.
+
+### Intelligent Merging
+
+When the config (`orderConfig.ts`) adds a new field, the merge logic preserves user preferences:
+
+```typescript
+// User's saved order for LIMIT
+const savedOrder = ["notional", "direction", "limitPrice", "account", "liquidityPool", "timeInForce"];
+
+// Config adds "slippage" field
+const configOrder = ["direction", "liquidityPool", "notional", "limitPrice", "slippage", "timeInForce", "account"];
+
+// Merge result: user order preserved, new field appended
+const result = ["notional", "direction", "limitPrice", "account", "liquidityPool", "timeInForce", "slippage"];
+```
+
+**Logic**:
+
+1. Keep fields from savedOrder that still exist in configOrder
+2. Find new fields in configOrder that weren't saved
+3. Append new fields at the end
+
+### Non-Reorderable Fields
+
+Some fields are pinned and cannot be reordered:
+
+- **Order Type**: Always rendered first, outside the reorderable list
+- **Status**: Always pinned at top in viewing/amending modes
+
+### Restrictions
+
+- **Creating Mode Only**: Reordering is only available in `creating` mode
+- **Not in View/Amend**: Drag handles are hidden in viewing/amending modes
+- **TickingPrice & Footer**: These components are outside the reorderable area
+
+### Usage Example
+
+```tsx
+// In OrderForm.tsx
+import { ReorderableFieldList } from "../molecules/ReorderableFieldList";
+import { ReorderModeBanner } from "../molecules/ReorderModeBanner";
+
+const renderField = useCallback(
+  (fieldKey: keyof OrderStateData, index: number) => (
+    <FieldController key={fieldKey} fieldKey={fieldKey} rowIndex={index} />
+  ),
+  []
+);
+
+return (
+  <div>
+    {/* Order Type selector - always first, not reorderable */}
+    <RowComponent label="Order Type" fieldKey="orderType">
+      <Select ... />
+    </RowComponent>
+
+    {/* Reorderable field list */}
+    <ReorderableFieldList
+      orderType={orderType}
+      isViewMode={isReadOnly}
+      renderField={renderField}
+    />
+
+    {/* Banner shows when reorder mode active */}
+    <ReorderModeBanner orderType={orderType} />
+
+    <OrderFooter />
+  </div>
+);
+```
+
+### Future Enhancements
+
+- **Reorder Mode Toggle Button**: UI button to enter reorder mode (currently localStorage only)
+- **Server Persistence**: Save field order preferences to server instead of localStorage
+- **User-Specific**: Store orders per user when authentication is implemented
+- **Keyboard Shortcuts**: Arrow keys to reorder fields without drag-and-drop
 
 ---
 

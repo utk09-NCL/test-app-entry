@@ -74,7 +74,7 @@ export const OrderFooter = () => {
               : undefined
           }
         >
-          AMEND ORDER
+          AMEND
         </button>
       ) : (
         // In "creating" or "amending" mode, show SUBMIT button
@@ -86,7 +86,7 @@ export const OrderFooter = () => {
           title={hasErrors ? "Please fix errors before submitting" : undefined}
         >
           {/* Show spinner during submission, otherwise show text */}
-          {status === "SUBMITTING" ? <Spinner size="md" /> : "SUBMIT ORDER"}
+          {status === "SUBMITTING" ? <Spinner size="md" /> : "SUBMIT"}
         </button>
       )}
     </div>

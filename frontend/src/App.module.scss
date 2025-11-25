@@ -16,11 +16,6 @@
   animation: pulse 2s infinite;
 }
 
-.scrollArea {
-  max-height: var(--oe-app-max-height);
-  overflow-y: auto;
-}
-
 @keyframes pulse {
 
   0%,

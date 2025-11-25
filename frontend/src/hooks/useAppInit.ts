@@ -53,6 +53,7 @@ export const useAppInit = () => {
   const setBaseValues = useOrderEntryStore((s) => s.setBaseValues);
   const resetInteractions = useOrderEntryStore((s) => s.resetFormInteractions);
   const validateRefData = useOrderEntryStore((s) => s.validateRefData);
+  const initFieldOrderFromStorage = useOrderEntryStore((s) => s.initFieldOrderFromStorage);
 
   // Query 1: Fetch all accounts
   // Used to populate account dropdown
@@ -220,4 +221,10 @@ export const useAppInit = () => {
       console.log("[useAppInit] FDC3 intent received and applied:", ctx);
     });
   }, [setBaseValues, resetInteractions, validateRefData]);
+
+  // Effect 4: Initialize field order preferences from localStorage
+  useEffect(() => {
+    // Load user's custom field order preferences on app start
+    initFieldOrderFromStorage();
+  }, [initFieldOrderFromStorage]);
 };

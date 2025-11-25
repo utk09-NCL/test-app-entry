@@ -1,3 +1,5 @@
+@use "../../styles/variables" as *;
+
 /**
  * DragHandle Styles
  */
@@ -9,28 +11,28 @@
   width: 24px;
   height: 24px;
   padding: 0;
-  margin-right: 8px;
+  margin-right: $oe-spacing-sm;
   background: transparent;
   border: none;
-  border-radius: 4px;
-  color: var(--color-text-muted, #94a3b8);
+  border-radius: $oe-radius-sm;
+  color: $oe-color-muted;
   cursor: grab;
-  transition: all 0.15s ease;
+  transition: all $oe-transition-fast;
   flex-shrink: 0;
 
   &:hover {
-    background: var(--color-bg-hover, rgba(0, 0, 0, 0.05));
-    color: var(--color-text-secondary, #64748b);
+    background: $oe-color-bg-hover;
+    color: $oe-color-text-secondary;
   }
 
   &:active {
     cursor: grabbing;
-    background: var(--color-bg-active, rgba(0, 0, 0, 0.1));
-    color: var(--color-primary, #3b82f6);
+    background: rgba($oe-color-bg-hover, 0.8);
+    color: $oe-color-primary;
   }
 
   &:focus-visible {
-    outline: 2px solid var(--color-focus, #3b82f6);
+    outline: 2px solid $oe-color-primary;
     outline-offset: 2px;
   }
 }

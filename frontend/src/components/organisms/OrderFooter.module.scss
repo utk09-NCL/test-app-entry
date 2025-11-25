@@ -4,7 +4,7 @@
   display: flex;
   flex-direction: column;
   gap: $oe-spacing-lg;
-  padding: $oe-spacing-xl 0 0 0;
+  padding: 0;
   border-top: 1px solid $oe-color-border;
 }
 
@@ -12,7 +12,6 @@
   padding: 0.875rem $oe-spacing-lg;
   background-color: $oe-color-error-bg-light;
   border: 1px solid $oe-color-error-border;
-  border-radius: $oe-radius-sm;
   color: $oe-color-error-text;
   font-size: 0.9rem;
   font-weight: 500;
@@ -20,10 +19,8 @@
 }
 
 .submitBtn {
-  min-width: 160px;
   padding: $oe-spacing-md $oe-spacing-2xl;
   font-size: 1rem;
-  font-weight: 600;
   color: $oe-color-white;
   background-color: $oe-color-primary;
   border: none;
@@ -35,6 +32,7 @@
   justify-content: center;
   gap: $oe-spacing-sm;
   align-self: flex-end;
+  margin: 8px;
 
   &:hover:not(:disabled) {
     background-color: $oe-color-primary-dark;

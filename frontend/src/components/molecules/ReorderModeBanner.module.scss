@@ -1,3 +1,5 @@
+@use "../../styles/variables" as *;
+
 /**
  * ReorderModeBanner Styles
  */
@@ -6,51 +8,83 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 16px;
-  margin: 16px 0 8px 0;
+  gap: $oe-spacing-md;
+  padding: 10px $oe-spacing-lg;
+  margin-top: $oe-spacing-lg;
   background: linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%);
-  border: 1px solid var(--color-primary-light, #93c5fd);
-  border-radius: 8px;
+  border: 1px solid adjust($oe-color-primary, 25%);
   font-size: 0.875rem;
-  color: var(--color-primary-dark, #1e40af);
+  color: $oe-color-primary-dark;
 }
 
 .content {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: $oe-spacing-sm;
 }
 
 .icon {
-  font-size: 1.25rem;
-  color: var(--color-primary, #3b82f6);
-  line-height: 1;
+  color: $oe-color-primary;
+  flex-shrink: 0;
 }
 
 .text {
   font-weight: 500;
 }
 
+.actions {
+  display: flex;
+  align-items: center;
+  gap: $oe-spacing-sm;
+}
+
 .resetButton {
-  padding: 6px 12px;
+  padding: 6px $oe-spacing-md;
   background: transparent;
-  border: 1px solid var(--color-primary, #3b82f6);
-  border-radius: 6px;
-  color: var(--color-primary, #3b82f6);
+  border: 1px solid $oe-color-muted;
+  border-radius: $oe-radius-md;
+  color: $oe-color-primary-dark;
   font-size: 0.8125rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all $oe-transition-fast;
   white-space: nowrap;
 
   &:hover {
-    background: var(--color-primary, #3b82f6);
-    color: white;
+    background: rgba($oe-color-bg-hover, 0.1);
+    border-color: $oe-color-text-secondary;
+    color: $oe-color-text-primary;
   }
 
   &:focus-visible {
-    outline: 2px solid var(--color-focus, #3b82f6);
+    outline: 2px solid $oe-color-primary;
+    outline-offset: 2px;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.saveButton {
+  padding: 6px $oe-spacing-lg;
+  background: $oe-color-primary;
+  border: 1px solid $oe-color-primary;
+  border-radius: $oe-radius-md;
+  color: $oe-color-white;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all $oe-transition-fast;
+  white-space: nowrap;
+
+  &:hover {
+    background: $oe-color-primary-hover;
+    border-color: $oe-color-primary-hover;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $oe-color-primary;
     outline-offset: 2px;
   }
 

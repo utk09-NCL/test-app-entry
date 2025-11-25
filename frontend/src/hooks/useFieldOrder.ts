@@ -1,226 +1,69 @@
 /**
- * useFieldOrder Hook - Manages Custom Field Order per Order Type
+ * useFieldOrder Hook - Custom Hook for Field Order Management
  *
- * Handles persisting and retrieving user-customized field order from localStorage.
- * Supports per-order-type customization with intelligent merging when config changes.
+ * Thin wrapper around the Zustand store's FieldOrderSlice.
+ * Provides convenient access to field order state and actions.
  *
  * Features:
  * - Per order type field ordering
- * - Intelligent merge with orderConfig (preserves user order, appends new fields)
- * - Auto-save to localStorage on changes
- * - Reset to default functionality
+ * - Draft state during reorder mode (changes not persisted until Save)
+ * - Save button persists draft to localStorage and exits reorder mode
+ * - Reset to default resets draft state (requires Save to persist)
  * - Reorder mode detection
  *
  * LocalStorage Keys:
  * - `fx-order-reorder-mode`: "true" | "false" - enables drag handles and banner
- * - `fx-order-field-order`: { "LIMIT": [...], "MARKET": [...] } - custom orders
+ * - `fx-order-field-order`: { "LIMIT": [...], "MARKET": [...] } - persisted orders
  *
- * Used by: OrderForm, ReorderableFieldList
+ * Used by: OrderForm (passed as props to child components)
  */
 
-import { useCallback, useEffect, useState } from "react";
-
-import { ORDER_TYPES } from "../config/orderConfig";
+import { useOrderEntryStore } from "../store";
+import { FieldOrderMap } from "../store/slices/createFieldOrderSlice";
 import { OrderStateData, OrderType } from "../types/domain";
 
-// LocalStorage keys
-const FIELD_ORDER_KEY = "fx-order-field-order";
-const REORDER_MODE_KEY = "fx-order-reorder-mode";
-
-// Type for stored field orders
-type FieldOrderMap = Partial<Record<OrderType, (keyof OrderStateData)[]>>;
-
 /**
- * Get stored field orders from localStorage
+ * Return type for useFieldOrder hook (for prop passing)
  */
-const getStoredFieldOrders = (): FieldOrderMap => {
-  try {
-    const stored = localStorage.getItem(FIELD_ORDER_KEY);
-    if (stored) {
-      return JSON.parse(stored) as FieldOrderMap;
-    }
-  } catch (e) {
-    console.error("[useFieldOrder] Failed to parse stored field orders:", e);
-  }
-  return {};
-};
-
-/**
- * Save field orders to localStorage
- */
-const saveFieldOrders = (orders: FieldOrderMap): void => {
-  try {
-    localStorage.setItem(FIELD_ORDER_KEY, JSON.stringify(orders));
-  } catch (e) {
-    console.error("[useFieldOrder] Failed to save field orders:", e);
-  }
-};
-
-/**
- * Check if reorder mode is enabled
- */
-const getReorderModeEnabled = (): boolean => {
-  try {
-    return localStorage.getItem(REORDER_MODE_KEY) === "true";
-  } catch {
-    return false;
-  }
-};
-
-/**
- * Intelligently merge saved field order with config field order.
- *
- * Logic:
- * 1. Keep fields from savedOrder that still exist in configOrder
- * 2. Find new fields in configOrder that weren't in savedOrder
- * 3. Append new fields at the end
- *
- * @param savedOrder - User's saved field order
- * @param configOrder - Current config field order
- * @returns Merged field order
- */
-const mergeFieldOrders = (
-  savedOrder: (keyof OrderStateData)[],
-  configOrder: (keyof OrderStateData)[]
-): (keyof OrderStateData)[] => {
-  // Step 1: Keep fields from savedOrder that still exist in config
-  const validSavedFields = savedOrder.filter((f) => configOrder.includes(f));
-
-  // Step 2: Find new fields in config that weren't in saved
-  const newFields = configOrder.filter((f) => !savedOrder.includes(f));
-
-  // Step 3: Append new fields at the end
-  return [...validSavedFields, ...newFields];
-};
+export interface FieldOrderHookReturn {
+  isReorderMode: boolean;
+  fieldOrders: FieldOrderMap;
+  draftFieldOrders: FieldOrderMap;
+  getFieldOrder: (orderType: OrderType, isViewMode?: boolean) => (keyof OrderStateData)[];
+  hasCustomOrder: (orderType: OrderType) => boolean;
+  updateFieldOrder: (orderType: OrderType, newOrder: (keyof OrderStateData)[]) => void;
+  resetToDefault: (orderType: OrderType) => void;
+  saveAndExit: () => void;
+  cancelReorder: () => void;
+  toggleReorderMode: () => void;
+}
 
 /**
  * Hook for managing field order with localStorage persistence.
+ * Wraps the Zustand store's FieldOrderSlice for convenient component access.
  *
  * @returns Field order utilities and state
  */
-export const useFieldOrder = () => {
-  // State for stored field orders (all order types)
-  const [fieldOrders, setFieldOrders] = useState<FieldOrderMap>(getStoredFieldOrders);
+export const useFieldOrder = (): FieldOrderHookReturn => {
+  // Select state from store - MUST subscribe to these to trigger re-renders
+  const isReorderMode = useOrderEntryStore((s) => s.isReorderMode);
+  const fieldOrders = useOrderEntryStore((s) => s.fieldOrders);
+  const draftFieldOrders = useOrderEntryStore((s) => s.draftFieldOrders);
 
-  // State for reorder mode
-  const [isReorderMode, setIsReorderMode] = useState<boolean>(getReorderModeEnabled);
-
-  // Listen for localStorage changes (in case another tab changes it)
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === FIELD_ORDER_KEY) {
-        setFieldOrders(getStoredFieldOrders());
-      }
-      if (e.key === REORDER_MODE_KEY) {
-        setIsReorderMode(getReorderModeEnabled());
-      }
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
-
-  /**
-   * Get the field order for a specific order type.
-   * Applies intelligent merging if stored order exists.
-   * Filters out 'status' field (handled separately in viewing mode).
-   */
-  const getFieldOrder = useCallback(
-    (orderType: OrderType, isViewMode: boolean = false): (keyof OrderStateData)[] => {
-      const config = ORDER_TYPES[orderType];
-      if (!config) return [];
-
-      // Get the appropriate fields based on view mode
-      const configFields = isViewMode ? config.viewFields : config.fields;
-
-      // Separate 'status' field (always pinned at top in view mode)
-      const statusField = isViewMode ? configFields.filter((f) => f === "status") : [];
-      const orderableConfigFields = configFields.filter((f) => f !== "status");
-
-      // Check if user has custom order for this order type
-      const savedOrder = fieldOrders[orderType];
-
-      let orderedFields: (keyof OrderStateData)[];
-
-      if (savedOrder && savedOrder.length > 0) {
-        // Merge saved order with config (handles added/removed fields)
-        orderedFields = mergeFieldOrders(savedOrder, orderableConfigFields);
-      } else {
-        // Use config order
-        orderedFields = orderableConfigFields;
-      }
-
-      // In view mode, prepend status field
-      return [...statusField, ...orderedFields];
-    },
-    [fieldOrders]
-  );
-
-  /**
-   * Update field order for a specific order type.
-   * Auto-saves to localStorage.
-   */
-  const updateFieldOrder = useCallback(
-    (orderType: OrderType, newOrder: (keyof OrderStateData)[]): void => {
-      // Filter out 'status' before saving (it's always pinned)
-      const orderToSave = newOrder.filter((f) => f !== "status");
-
-      setFieldOrders((prev) => {
-        const updated = { ...prev, [orderType]: orderToSave };
-        saveFieldOrders(updated);
-        return updated;
-      });
-    },
-    []
-  );
-
-  /**
-   * Reset field order for a specific order type to default.
-   * Removes the custom order from localStorage.
-   */
-  const resetToDefault = useCallback((orderType: OrderType): void => {
-    setFieldOrders((prev) => {
-      const updated = { ...prev };
-      delete updated[orderType];
-      saveFieldOrders(updated);
-      return updated;
-    });
-  }, []);
-
-  /**
-   * Reset all field orders to default.
-   */
-  const resetAllToDefault = useCallback((): void => {
-    setFieldOrders({});
-    localStorage.removeItem(FIELD_ORDER_KEY);
-  }, []);
-
-  /**
-   * Check if a specific order type has a custom order.
-   */
-  const hasCustomOrder = useCallback(
-    (orderType: OrderType): boolean => {
-      const saved = fieldOrders[orderType];
-      return !!(saved && saved.length > 0);
-    },
-    [fieldOrders]
-  );
-
-  /**
-   * Toggle reorder mode (for future use with UI button)
-   */
-  const toggleReorderMode = useCallback((): void => {
-    setIsReorderMode((prev) => {
-      const newValue = !prev;
-      localStorage.setItem(REORDER_MODE_KEY, String(newValue));
-      return newValue;
-    });
-  }, []);
+  // Get actions from store (these don't cause re-renders)
+  const getFieldOrder = useOrderEntryStore((s) => s.getFieldOrder);
+  const hasCustomOrder = useOrderEntryStore((s) => s.hasCustomOrder);
+  const updateFieldOrder = useOrderEntryStore((s) => s.updateFieldOrder);
+  const resetFieldOrderToDefault = useOrderEntryStore((s) => s.resetFieldOrderToDefault);
+  const saveFieldOrderAndExit = useOrderEntryStore((s) => s.saveFieldOrderAndExit);
+  const cancelReorderMode = useOrderEntryStore((s) => s.cancelReorderMode);
+  const toggleReorderMode = useOrderEntryStore((s) => s.toggleReorderMode);
 
   return {
-    // State
+    // State - subscribing ensures re-render when they change
     isReorderMode,
     fieldOrders,
+    draftFieldOrders,
 
     // Getters
     getFieldOrder,
@@ -228,8 +71,9 @@ export const useFieldOrder = () => {
 
     // Actions
     updateFieldOrder,
-    resetToDefault,
-    resetAllToDefault,
+    resetToDefault: resetFieldOrderToDefault,
+    saveAndExit: saveFieldOrderAndExit,
+    cancelReorder: cancelReorderMode,
     toggleReorderMode,
   };
 };

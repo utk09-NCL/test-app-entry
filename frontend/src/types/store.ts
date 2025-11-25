@@ -21,6 +21,8 @@
  * Used by: Store creation in src/store/index.ts, component selectors.
  */
 
+import { FieldOrderSlice } from "../store/slices/createFieldOrderSlice";
+
 import { Account, CurrencyPair, LiquidityPool, OrderStateData } from "./domain";
 
 // --- Slice Interfaces ---
@@ -171,4 +173,5 @@ export type BoundState = AppSlice &
   InitialOrderSlice &
   UserInteractionSlice &
   ComputedSlice &
-  PriceSlice;
+  PriceSlice &
+  FieldOrderSlice;
