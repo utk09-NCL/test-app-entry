@@ -9,21 +9,28 @@
  * - Each order type (MARKET, LIMIT, FLOAT, etc.) has its own field list
  * - Fields are rendered by FieldController, which maps field names to components
  * - Form adapts to editMode: "creating", "viewing", or "amending"
+ * - Supports drag-and-drop field reordering (when reorder mode enabled)
  *
  * Architecture:
  * 1. Read current orderType from store (derived from baseValues + dirtyValues)
  * 2. Look up field configuration for that order type
- * 3. Map over fields array and render FieldController for each
- * 4. Include OrderFooter with action buttons at the bottom
+ * 3. Apply user's custom field order (from localStorage) if available
+ * 4. Render fields via ReorderableFieldList for drag-and-drop support
+ * 5. Include OrderFooter with action buttons at the bottom
  *
  * @see ORDER_TYPES in config/orderConfig.ts for field configurations
  * @see FieldController for individual field rendering logic
+ * @see useFieldOrder for custom field order management
  */
+
+import { useCallback } from "react";
 
 import { ORDER_TYPES } from "../../config/orderConfig";
 import { useOrderEntryStore } from "../../store";
-import { OrderType } from "../../types/domain";
+import { OrderStateData, OrderType } from "../../types/domain";
 import { Select } from "../atoms/Select";
+import { ReorderableFieldList } from "../molecules/ReorderableFieldList";
+import { ReorderModeBanner } from "../molecules/ReorderModeBanner";
 import { RowComponent } from "../molecules/RowComponent";
 
 import { FieldController } from "./FieldController";
@@ -52,18 +59,25 @@ export const OrderForm = () => {
   // Each config contains: fields[], viewFields[], editableFields[], initialFocus
   const config = ORDER_TYPES[orderType as keyof typeof ORDER_TYPES];
 
+  /**
+   * Render function for each field in the reorderable list.
+   * Memoized via useCallback to prevent unnecessary re-renders.
+   * Must be defined before any early returns to satisfy React hooks rules.
+   */
+  const renderField = useCallback(
+    (fieldKey: keyof OrderStateData, index: number) => (
+      <FieldController key={fieldKey} fieldKey={fieldKey} rowIndex={index} />
+    ),
+    []
+  );
+
   // Safety check: If config isn't loaded yet, show loading state
   // This shouldn't happen in normal flow, but guards against edge cases
   if (!config) return <div className={styles.loading}>Loading Order Config...</div>;
 
-  // Determine which fields to display based on edit mode
-  // In viewing/amending mode, show viewFields (includes status)
-  // In creating mode, show fields (no status)
-  const fieldsToShow = isReadOnly ? config.viewFields : config.fields;
-
   return (
     <div className={styles.container} data-testid="order-form" data-app-state={editMode}>
-      {/* Order Type Selector - Always shown first */}
+      {/* Order Type Selector - Always shown first, not reorderable */}
       {/* When user changes this, the entire form re-renders with new fields */}
       <RowComponent label="Order Type" fieldKey="orderType" rowIndex={0}>
         <Select
@@ -94,15 +108,19 @@ export const OrderForm = () => {
         />
       </RowComponent>
 
-      {/* Dynamic Field Grid */}
-      {/* Maps over fieldsToShow array and renders each field */}
-      {/* Example: LIMIT order shows [direction, liquidityPool, notional, limitPrice, ...] */}
-      {/* In view/amend mode, shows [status, direction, liquidityPool, ...] */}
+      {/* Dynamic Field Grid with Drag-and-Drop Support */}
+      {/* Uses ReorderableFieldList for drag-and-drop reordering */}
+      {/* Field order is determined by useFieldOrder hook (config + localStorage) */}
       <div className={styles.grid} data-testid="order-form-fields">
-        {fieldsToShow.map((fieldKey, index) => (
-          <FieldController key={fieldKey} fieldKey={fieldKey} rowIndex={index + 1} />
-        ))}
+        <ReorderableFieldList
+          orderType={orderType}
+          isViewMode={isReadOnly}
+          renderField={renderField}
+        />
       </div>
+
+      {/* Reorder Mode Banner - Shows when reorder mode is active */}
+      <ReorderModeBanner orderType={orderType} />
 
       {/* Action Buttons (Submit/Amend) */}
       {/* Rendered at the bottom of the form */}

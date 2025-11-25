@@ -1,0 +1,27 @@
+/**
+ * SortableFieldItem Styles
+ */
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  position: relative;
+
+  &.reorderMode {
+    // Add slight left padding to accommodate drag handle
+    padding-left: 0;
+  }
+
+  &.dragging {
+    // Visual feedback when being dragged
+    background: var(--color-bg-elevated, #f8fafc);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.content {
+  flex: 1;
+  min-width: 0; // Prevent content from overflowing
+}
