@@ -4,7 +4,7 @@
  * This is the "brain" of the order entry system. It handles:
  * - Derived values: Merging baseValues + dirtyValues
  * - Validation: Sync (Valibot) + async (server checks)
- * - Submission: Final validation + API call + state transitions
+ * - Submission: Final validation + GraphQL mutations + state transitions
  *
  * Why "computed"?
  * - These are not raw state, but calculated from other slices
@@ -28,6 +28,9 @@ import { StateCreator } from "zustand";
 
 import { AMOUNT_CONFIG, VALIDATION_CONFIG } from "../../config/constants";
 import { SCHEMA_MAP } from "../../config/validation";
+import { graphqlClient } from "../../graphql/client";
+import { AMEND_ORDER_MUTATION, CREATE_ORDER_MUTATION } from "../../graphql/mutations";
+import type { AmendOrderResponse, CreateOrderResponse } from "../../graphql/types";
 import { OrderStateData } from "../../types/domain";
 import { BoundState, ComputedSlice } from "../../types/store";
 
@@ -59,12 +62,16 @@ export const createComputedSlice: StateCreator<
   /**
    * Get the final merged order state (base + user edits).
    * This is the "single source of truth" for current order values.
+   * Also includes orderStatus if available (for display in view/amend mode).
    */
   getDerivedValues: () => {
     const base = get().baseValues;
     const dirty = get().dirtyValues;
+    const orderStatus = get().orderStatus;
     // User edits (dirty) always win over defaults (base)
-    return { ...base, ...dirty } as OrderStateData;
+    const merged = { ...base, ...dirty } as OrderStateData;
+    if (orderStatus) merged.status = orderStatus;
+    return merged;
   },
 
   /**
@@ -147,10 +154,14 @@ export const createComputedSlice: StateCreator<
     } catch (e) {
       // Log ValiError for debugging (but don't crash)
       // User sees field-level errors, devs see console logs
+      const appInstanceId = get().instanceId;
       if (e && typeof e === "object" && "name" in e && e.name === "ValiError") {
-        console.error("[Validation] ValiError caught during field validation:", e);
+        console.error(
+          `[${appInstanceId}] [Validation] ValiError caught during field validation:`,
+          e
+        );
       } else if (e) {
-        console.error("[Validation] Unexpected error during validation:", e);
+        console.error(`[${appInstanceId}] [Validation] Unexpected error during validation:`, e);
       }
     }
 
@@ -262,17 +273,29 @@ export const createComputedSlice: StateCreator<
   },
 
   /**
-   * Submit the order (final validation + API call).
+   * Submit the order (final validation + GraphQL mutation).
    *
    * Flow:
    * 1. Set status to SUBMITTING (shows loading, disables buttons)
    * 2. Run full form validation (all fields)
    * 3. If invalid, show errors and return to READY
-   * 4. If valid, simulate API call (1.2s delay)
-   * 5. On success: editMode = viewing, show success toast
-   * 6. On error: status = ERROR, show error toast
+   * 4. If valid, call CREATE_ORDER_MUTATION or AMEND_ORDER_MUTATION
+   * 5. On success: Set orderId, editMode = viewing, subscribe to ORDER_SUBSCRIPTION
+   * 6. On error: Show error toast, stay in current mode (or go to viewing if orderId exists)
    */
   submitOrder: async () => {
+    const appInstanceId = get().instanceId;
+    const currentStatus = get().status;
+    const currentEditMode = get().editMode;
+
+    // GUARD: Prevent duplicate submissions
+    if (currentStatus === "SUBMITTING") {
+      console.warn(
+        `[${appInstanceId}] submitOrder: Already submitting, ignoring duplicate request`
+      );
+      return;
+    }
+
     const values = get().getDerivedValues();
 
     // Start submission (loading state)
@@ -306,30 +329,128 @@ export const createComputedSlice: StateCreator<
     }
 
     // ========================================
-    // API Call (Mock)
+    // GraphQL Mutation
     // ========================================
     try {
-      // Simulate network delay (in prod, this would be fetch/axios)
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+      const isAmending = currentEditMode === "amending" && values.orderId;
 
-      console.log("Order Submitted Payload:", values);
+      if (isAmending) {
+        // AMEND ORDER
+        const { data } = await graphqlClient.mutate<AmendOrderResponse>({
+          mutation: AMEND_ORDER_MUTATION,
+          variables: {
+            amendOrder: {
+              orderId: values.orderId,
+              amount: values.notional,
+              limitPrice: values.limitPrice,
+              stopPrice: values.stopPrice,
+              timeInForce: values.timeInForce,
+            },
+          },
+        });
 
-      // Success! Transition to read-only view
+        const response = data?.amendOrder;
+
+        if (response?.result === "SUCCESS") {
+          console.log(`[${appInstanceId}] Order ${response.orderId} amended successfully`);
+
+          set((state) => {
+            state.status = "READY";
+            state.editMode = "viewing";
+            state.toastMessage = {
+              type: "success",
+              text: `Order ${values.symbol} Amended!`,
+            };
+            state.serverErrors = {};
+          });
+        } else {
+          // Amendment failed
+          console.error(
+            `[${appInstanceId}] Amendment failed:`,
+            response?.failureReason || "Unknown error"
+          );
+
+          set((state) => {
+            state.status = "READY";
+            state.editMode = "viewing"; // Go to viewing since order exists
+            state.toastMessage = {
+              type: "error",
+              text: response?.failureReason || "Amendment failed",
+            };
+          });
+        }
+      } else {
+        // CREATE ORDER
+        const { data } = await graphqlClient.mutate<CreateOrderResponse>({
+          mutation: CREATE_ORDER_MUTATION,
+          variables: {
+            orderEntry: {
+              currencyPair: values.symbol,
+              side: values.direction,
+              orderType: values.orderType,
+              amount: values.notional,
+              ccy: values.symbol.substring(0, 3), // Extract base currency (e.g., "GBP" from "GBPUSD")
+              limitPrice: values.limitPrice,
+              stopPrice: values.stopPrice,
+              liquidityPool: values.liquidityPool,
+              account: values.account,
+              timeInForce: values.timeInForce,
+              startTime: values.startTime,
+            },
+          },
+        });
+
+        const response = data?.createOrder;
+
+        if (response?.result === "SUCCESS" && response.orderId) {
+          console.log(`[${appInstanceId}] Order ${response.orderId} created successfully`);
+
+          set((state) => {
+            state.status = "READY";
+            state.editMode = "viewing"; // Show read-only view
+            state.currentOrderId = response.orderId; // Store for ORDER_SUBSCRIPTION
+            state.toastMessage = {
+              type: "success",
+              text: `Order ${values.direction} ${values.symbol} Placed!`,
+            };
+            state.serverErrors = {};
+          });
+        } else {
+          // Order creation failed
+          console.error(
+            `[${appInstanceId}] Order creation failed:`,
+            response?.failureReason || "Unknown error"
+          );
+
+          set((state) => {
+            state.status = "READY";
+            state.toastMessage = {
+              type: "error",
+              text: response?.failureReason || "Order submission failed",
+            };
+          });
+        }
+      }
+    } catch (e) {
+      // Network/GraphQL error
+      console.error(`[${appInstanceId}] Submission Error:`, e);
+
+      // Check if we have an orderId (meaning order might have been submitted)
+      const hasOrderId = get().currentOrderId !== null;
+
       set((state) => {
         state.status = "READY";
-        state.editMode = "viewing"; // Show read-only view
-        state.toastMessage = {
-          type: "success",
-          text: `Order ${values.direction} ${values.symbol} Placed!`,
-        };
-        state.serverErrors = {}; // Clear any server errors
-      });
-    } catch (e) {
-      // Network/server error
-      console.error("Submission Failed", e);
-      set((state) => {
-        state.status = "ERROR"; // Fatal error state
-        state.toastMessage = { type: "error", text: "Submission Failed" };
+        if (hasOrderId) {
+          // Order was submitted, but we got an error (maybe subscription issue)
+          state.editMode = "viewing";
+          state.toastMessage = {
+            type: "error",
+            text: "Error tracking order status",
+          };
+        } else {
+          // Order submission failed
+          state.toastMessage = { type: "error", text: "Submission Failed" };
+        }
       });
     }
   },

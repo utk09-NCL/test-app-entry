@@ -45,6 +45,12 @@ export const createAppSlice: StateCreator<BoundState, [["zustand/immer", never]]
    */
   editMode: "creating",
 
+  /** Current order ID (set after submission, used for subscription tracking) */
+  currentOrderId: null,
+
+  /** Current order status (from ORDER_SUBSCRIPTION) */
+  orderStatus: null,
+
   /** Toast notification for user feedback (null = no toast) */
   toastMessage: null,
 
@@ -58,6 +64,18 @@ export const createAppSlice: StateCreator<BoundState, [["zustand/immer", never]]
   setEditMode: (mode) =>
     set((state) => {
       state.editMode = mode;
+    }),
+
+  /** Set current order ID (after submission) */
+  setCurrentOrderId: (orderId) =>
+    set((state) => {
+      state.currentOrderId = orderId;
+    }),
+
+  /** Set order status (from subscription) */
+  setOrderStatus: (status) =>
+    set((state) => {
+      state.orderStatus = status;
     }),
 
   /** Show toast notification (auto-dismissed by UI after timeout) */

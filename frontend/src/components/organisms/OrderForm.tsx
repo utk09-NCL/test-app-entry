@@ -49,12 +49,17 @@ export const OrderForm = () => {
   const isReadOnly = editMode === "viewing" || editMode === "amending";
 
   // Look up configuration for the current order type
-  // Each config contains: fields[], editableFields[], initialFocus
+  // Each config contains: fields[], viewFields[], editableFields[], initialFocus
   const config = ORDER_TYPES[orderType as keyof typeof ORDER_TYPES];
 
   // Safety check: If config isn't loaded yet, show loading state
   // This shouldn't happen in normal flow, but guards against edge cases
   if (!config) return <div className={styles.loading}>Loading Order Config...</div>;
+
+  // Determine which fields to display based on edit mode
+  // In viewing/amending mode, show viewFields (includes status)
+  // In creating mode, show fields (no status)
+  const fieldsToShow = isReadOnly ? config.viewFields : config.fields;
 
   return (
     <div className={styles.container} data-testid="order-form" data-app-state={editMode}>
@@ -90,10 +95,11 @@ export const OrderForm = () => {
       </RowComponent>
 
       {/* Dynamic Field Grid */}
-      {/* Maps over config.fields array and renders each field */}
+      {/* Maps over fieldsToShow array and renders each field */}
       {/* Example: LIMIT order shows [direction, liquidityPool, notional, limitPrice, ...] */}
+      {/* In view/amend mode, shows [status, direction, liquidityPool, ...] */}
       <div className={styles.grid} data-testid="order-form-fields">
-        {config.fields.map((fieldKey, index) => (
+        {fieldsToShow.map((fieldKey, index) => (
           <FieldController key={fieldKey} fieldKey={fieldKey} rowIndex={index + 1} />
         ))}
       </div>

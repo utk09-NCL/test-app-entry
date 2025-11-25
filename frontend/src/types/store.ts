@@ -35,10 +35,18 @@ export interface AppSlice {
   status: "INITIALIZING" | "READY" | "SUBMITTING" | "ERROR";
   /** UI edit mode (creating → viewing → amending) */
   editMode: "creating" | "viewing" | "amending";
+  /** Current order ID (set after order submission, used for tracking) */
+  currentOrderId: string | null;
+  /** Current order status (from ORDER_SUBSCRIPTION) */
+  orderStatus: string | null;
   /** Update application status */
   setStatus: (status: AppSlice["status"]) => void;
   /** Update UI edit mode */
   setEditMode: (mode: AppSlice["editMode"]) => void;
+  /** Set current order ID (after submission) */
+  setCurrentOrderId: (orderId: string | null) => void;
+  /** Set order status (from subscription) */
+  setOrderStatus: (status: string | null) => void;
   /** Global toast notification (null = no toast) */
   toastMessage: { type: "success" | "error" | "info"; text: string } | null;
   /** Show toast message */

@@ -106,4 +106,10 @@ export const FIELD_REGISTRY: Record<string, FieldDefinition> = {
     component: "DateTime",
     props: {},
   },
+  /** Order status (read-only, shown in view/amend mode) */
+  status: {
+    label: "Status",
+    component: "InputText",
+    props: { disabled: true },
+  },
 };

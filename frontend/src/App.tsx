@@ -31,6 +31,7 @@ import { MainLayout } from "./components/templates/MainLayout";
 import { graphqlClient } from "./graphql/client";
 import { useAppInit } from "./hooks/useAppInit";
 import { useKeyboardHotkeys } from "./hooks/useKeyboardHotkeys";
+import { useOrderTracking } from "./hooks/useOrderTracking";
 import { useOrderEntryStore } from "./store";
 
 import styles from "./App.module.scss";
@@ -39,6 +40,9 @@ function App() {
   // Initialize Data and Services
   // This hook loads reference data from the server and sets up FDC3 listeners
   useAppInit();
+
+  // Track order status updates via ORDER_SUBSCRIPTION
+  useOrderTracking();
 
   // Set up global keyboard shortcuts (e.g., Ctrl+Enter to submit)
   useKeyboardHotkeys();

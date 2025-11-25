@@ -30,5 +30,37 @@
       "targetEndTime": null
     },
     "createdAt": "2025-11-24T16:44:32.632Z"
+  },
+  "55bfd244-701a-4c5d-8ec8-192ee9b083df": {
+    "orderId": "55bfd244-701a-4c5d-8ec8-192ee9b083df",
+    "omsOrderId": "OMS-55bfd244",
+    "order": {
+      "currencyPair": "GBPUSD",
+      "side": "BUY",
+      "orderType": "LIMIT",
+      "amount": {
+        "amount": 1000000,
+        "ccy": "GBP"
+      },
+      "ccy": "GBP",
+      "limitPrice": 1.23,
+      "liquidityPool": "GATOR_POOL_1",
+      "account": {
+        "sdsId": "2",
+        "name": "Account Name"
+      },
+      "timeInForce": "GTC"
+    },
+    "execution": {
+      "agent": "GATOR",
+      "averageFillRate": 0,
+      "filled": {
+        "amount": 100000,
+        "ccy": "GBP"
+      },
+      "status": "PARTIALLY_FILLED",
+      "targetEndTime": null
+    },
+    "createdAt": "2025-11-25T13:16:26.063Z"
   }
 }

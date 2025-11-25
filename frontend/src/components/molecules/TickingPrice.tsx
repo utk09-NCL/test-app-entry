@@ -1,7 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+
+import { useSubscription } from "@apollo/client";
 
 import { PRICE_CONFIG } from "../../config/constants";
+import { GATOR_DATA_SUBSCRIPTION } from "../../graphql/subscriptions";
 import { useOrderEntryStore } from "../../store";
+import { isNdf, isOnshore } from "../../utils/currencyPairHelpers";
 
 import styles from "./TickingPrice.module.scss";
 
@@ -25,8 +29,7 @@ export interface PriceData {
  * TickingPrice - Live market price display for FX pairs.
  *
  * Shows both BUY and SELL prices that update in real-time.
- * Currently uses simulated price movement for demo purposes.
- * In production, this would subscribe to live price feeds via WebSocket.
+ * Subscribes to GATOR_DATA_SUBSCRIPTION for live price feeds via WebSocket.
  *
  * Features:
  * - Displays both bid (SELL) and ask (BUY) prices
@@ -40,54 +43,51 @@ export interface PriceData {
  * ```
  */
 export const TickingPrice = ({ symbol }: TickingPriceProps) => {
-  // Local state for buy price with initial value from config
+  // Local state for buy/sell prices and directional movement flags
   const [buyPrice, setBuyPrice] = useState<number>(PRICE_CONFIG.INITIAL_BUY_PRICE);
-  // Local state for sell price
   const [sellPrice, setSellPrice] = useState<number>(PRICE_CONFIG.INITIAL_SELL_PRICE);
-  // Track price direction for visual indicator
   const [buyIsUp, setBuyIsUp] = useState(true);
   const [sellIsUp, setSellIsUp] = useState(true);
+
+  // Get current currency pair from store to determine NDF/Onshore status
+  const currencyPairs = useOrderEntryStore((s) => s.currencyPairs);
+  const currentPair = currencyPairs.find((cp) => cp.symbol === symbol);
 
   // Action to update prices in store (used by LimitPriceWithCheckbox)
   const setCurrentPrices = useOrderEntryStore((s) => s.setCurrentPrices);
 
   /**
-   * Simulate price ticking via setInterval.
-   * In production, this would be replaced with WebSocket subscription.
-   * Re-runs when symbol changes to simulate new price feed subscription.
+   * Subscribe to real-time price feed from GATOR.
+   * Re-subscribes when symbol changes.
    */
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // Update buy price with random movement
-      setBuyPrice((prev) => {
-        // Random change between -0.0001 and +0.0001
-        const change = (Math.random() - 0.5) * PRICE_CONFIG.MAX_PRICE_CHANGE;
-        const newPrice = prev + change;
-        setBuyIsUp(change > 0); // Track direction for styling
-        // Clamp price to realistic range
-        return Math.max(PRICE_CONFIG.MIN_PRICE, Math.min(PRICE_CONFIG.MAX_PRICE, newPrice));
-      });
-
-      // Update sell price independently
-      setSellPrice((prev) => {
-        const change = (Math.random() - 0.5) * PRICE_CONFIG.MAX_PRICE_CHANGE;
-        const newPrice = prev + change;
-        setSellIsUp(change > 0);
-        return Math.max(PRICE_CONFIG.MIN_PRICE, Math.min(PRICE_CONFIG.MAX_PRICE, newPrice));
-      });
-    }, PRICE_CONFIG.TICK_INTERVAL_MS); // Update every 1000ms
-
-    // Cleanup interval on unmount or symbol change
-    return () => clearInterval(interval);
-  }, [symbol]); // Re-subscribe when symbol changes
-
-  /**
-   * Update store whenever prices change.
-   * This makes current prices available to LimitPriceWithCheckbox's "Grab" feature.
-   */
-  useEffect(() => {
-    setCurrentPrices(buyPrice, sellPrice);
-  }, [buyPrice, sellPrice, setCurrentPrices]);
+  useSubscription(GATOR_DATA_SUBSCRIPTION, {
+    variables: {
+      input: {
+        currencyPair: symbol,
+        ndf: isNdf(currentPair),
+        onshore: isOnshore(currentPair),
+        pipExtent: currentPair?.spotPrecision || 5,
+        pipSteps: 1,
+        markets: ["GATOR"],
+      },
+    },
+    fetchPolicy: "no-cache",
+    onData: ({ data }) => {
+      const payload = data.data;
+      if (payload?.gatorData) {
+        const newBuyPrice = payload.gatorData.topOfTheBookBuy.precisionValue;
+        const newSellPrice = payload.gatorData.topOfTheBookSell.precisionValue;
+        setBuyIsUp(newBuyPrice >= buyPrice);
+        setSellIsUp(newSellPrice >= sellPrice);
+        setBuyPrice(newBuyPrice);
+        setSellPrice(newSellPrice);
+        setCurrentPrices(newBuyPrice, newSellPrice);
+      }
+    },
+    onError: (err) => {
+      console.error(`[TickingPrice] Price subscription error for ${symbol}:`, err);
+    },
+  });
 
   // Format prices to 5 decimal places (standard for FX)
   const formattedBuyPrice = buyPrice.toFixed(PRICE_CONFIG.PRICE_DECIMALS);

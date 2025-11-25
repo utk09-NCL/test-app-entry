@@ -110,6 +110,8 @@ export interface OrderStateData {
   timeInForce: TimeInForce; // How long order stays active
   startTime?: string; // ISO timestamp for scheduled orders
   notes?: string; // User notes (not used in validation)
+  /** Order execution status (populated from subscription, not sent in create/amend mutation) */
+  status?: string;
 }
 
 /**

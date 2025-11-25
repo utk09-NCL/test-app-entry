@@ -105,6 +105,78 @@ export interface GatorDataSubscriptionResponse {
   gatorData: GatorDataGQL;
 }
 
+export interface AmountGQL {
+  amount: number;
+  ccy: string;
+}
+
+export interface AccountDetailGQL {
+  sdsId: string;
+  name: string;
+}
+
+export interface ExpiryGQL {
+  strategy: string;
+  endTime: string | null;
+  endTimeZone: string | null;
+}
+
+export interface OrderDetailGQL {
+  fixingId: string | null;
+  fixingDate: string | null;
+  amount: AmountGQL;
+  currencyPair: string;
+  iceberg: number | null;
+  level: number | null;
+  side: string;
+  orderType: string;
+  account: AccountDetailGQL;
+  triggerSide: string | null;
+  liquidityPool: string;
+  targetExecutionRate: number | null;
+  participationRate: number | null;
+  executionStyle: string | null;
+  discretionFactor: number | null;
+  delayBehaviour: string | null;
+  twapTargetEndTime: string | null;
+  twapTimeZone: string | null;
+  timeZone: string | null;
+  startTime: string | null;
+  skew: number | null;
+  franchiseExposure: number | null;
+  expiry: ExpiryGQL | null;
+}
+
+export interface ExecutionGQL {
+  agent: string;
+  averageFillRate: number;
+  filled: AmountGQL;
+  rejectReason: string | null;
+  status: string;
+  targetEndTime: string | null;
+}
+
+export interface OrderDataGQL {
+  orderId: string;
+  omsOrderId: string | null;
+  order: OrderDetailGQL;
+  execution: ExecutionGQL;
+}
+
+export interface OrderDataSubscriptionResponse {
+  orderData: OrderDataGQL;
+}
+
+export interface OrderFailureGQL {
+  description: string;
+  errorCode: string;
+  reason: string;
+}
+
+export interface OrderFailureSubscriptionResponse {
+  orderFailure: OrderFailureGQL;
+}
+
 // ============================================================================
 // Mutation Response Types
 // ============================================================================

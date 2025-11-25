@@ -22,6 +22,8 @@ import { OrderStateData, OrderType } from "../types/domain";
 export interface OrderConfig {
   /** Array of field keys to display (in order) */
   fields: (keyof OrderStateData)[];
+  /** Fields to display in view/amend mode (includes status) */
+  viewFields: (keyof OrderStateData)[];
   /** Which field should receive focus when this order type is selected */
   initialFocus: keyof OrderStateData;
   /**
@@ -41,30 +43,59 @@ export const ORDER_TYPES: Record<OrderType, OrderConfig> = {
   /** Market Order - immediate execution at current market price */
   MARKET: {
     fields: ["direction", "liquidityPool", "notional", "timeInForce", "account"],
+    viewFields: ["status", "direction", "liquidityPool", "notional", "timeInForce", "account"],
     initialFocus: "notional", // Most important field for market orders
     editableFields: ["notional", "timeInForce"], // Can only change amount and duration
   },
   /** Limit Order - executes at specified price or better */
   LIMIT: {
     fields: ["direction", "liquidityPool", "notional", "limitPrice", "timeInForce", "account"],
+    viewFields: [
+      "status",
+      "direction",
+      "liquidityPool",
+      "notional",
+      "limitPrice",
+      "timeInForce",
+      "account",
+    ],
     initialFocus: "limitPrice", // Traders typically enter price first
     editableFields: ["notional", "limitPrice", "timeInForce"],
   },
   /** Take Profit - closes position when price reaches target */
   TAKE_PROFIT: {
     fields: ["direction", "liquidityPool", "notional", "limitPrice", "timeInForce", "account"],
+    viewFields: [
+      "status",
+      "direction",
+      "liquidityPool",
+      "notional",
+      "limitPrice",
+      "timeInForce",
+      "account",
+    ],
     initialFocus: "limitPrice",
     editableFields: ["notional", "limitPrice", "timeInForce"],
   },
   /** Stop Loss - closes position to limit losses */
   STOP_LOSS: {
     fields: ["direction", "liquidityPool", "notional", "stopPrice", "timeInForce", "account"],
+    viewFields: [
+      "status",
+      "direction",
+      "liquidityPool",
+      "notional",
+      "stopPrice",
+      "timeInForce",
+      "account",
+    ],
     initialFocus: "stopPrice", // Stop price is the key field
     editableFields: ["notional", "stopPrice", "timeInForce"],
   },
   /** Float Order - special order type with optional limit price and auto-grab feature */
   FLOAT: {
     fields: ["direction", "notional", "limitPrice", "account"],
+    viewFields: ["status", "direction", "notional", "limitPrice", "account"],
     // Note: No liquidityPool for FLOAT orders
     initialFocus: "notional",
     editableFields: ["notional", "limitPrice"], // No timeInForce for FLOAT
