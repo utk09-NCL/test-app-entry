@@ -1,14 +1,14 @@
 @use "../../styles/variables" as *;
 
 .container {
-  padding: 1.5rem;
+  padding: $oe-spacing-xl;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 100%;
-  gap: 1.5rem;
-  animation: fadeIn 0.3s ease-in;
+  gap: $oe-spacing-xl;
+  animation: fadeIn $oe-transition-normal ease-in;
 }
 
 .header {
@@ -21,10 +21,10 @@
   justify-content: center;
   width: 4rem;
   height: 4rem;
-  border-radius: 9999px;
-  background-color: rgba(20, 83, 45, 0.3);
-  color: #4ade80;
-  margin-bottom: 1rem;
+  border-radius: $oe-radius-full;
+  background-color: $oe-color-success-icon-bg;
+  color: $oe-color-success-icon;
+  margin-bottom: $oe-spacing-lg;
 }
 
 .icon {
@@ -35,20 +35,20 @@
 .title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: $color-white;
-  margin-bottom: 0.25rem;
+  color: $oe-color-white;
+  margin-bottom: $oe-spacing-xs;
 }
 
 .subtitle {
-  color: $color-muted;
+  color: $oe-color-muted;
   font-size: 0.875rem;
 }
 
 .details {
   width: 100%;
-  background-color: $color-surface;
-  border-radius: $radius-lg;
-  border: 1px solid $color-border;
+  background-color: $oe-color-surface;
+  border-radius: $oe-radius-lg;
+  border: 1px solid $oe-color-border;
   padding: 1rem;
   display: flex;
   flex-direction: column;
@@ -61,27 +61,27 @@
 }
 
 .label {
-  color: $color-muted;
+  color: $oe-color-muted;
 }
 
 .value {
-  font-family: $font-mono;
+  font-family: $oe-font-mono;
 }
 
 .valueBold {
   font-weight: 700;
-  color: $color-white;
+  color: $oe-color-white;
 }
 
 .statusRow {
   display: flex;
   justify-content: space-between;
-  border-top: 1px solid $color-border;
-  padding-top: 0.5rem;
+  border-top: 1px solid $oe-color-border;
+  padding-top: $oe-spacing-sm;
 }
 
 .status {
-  color: #eab308;
+  color: $oe-color-status-warning;
   font-size: 0.875rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -90,37 +90,37 @@
 
 .actions {
   display: flex;
-  gap: 0.75rem;
+  gap: $oe-spacing-md;
   width: 100%;
 }
 
 .btnAmend {
   flex: 1;
-  padding: 0.5rem;
-  border: 1px solid $color-border;
-  border-radius: $radius-sm;
-  color: $color-text;
+  padding: $oe-spacing-sm;
+  border: 1px solid $oe-color-border;
+  border-radius: $oe-radius-sm;
+  color: $oe-color-text;
   background: transparent;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color $oe-transition-fast;
 
   &:hover {
-    background-color: $color-border;
+    background-color: $oe-color-border;
   }
 }
 
 .btnNew {
   flex: 1;
-  padding: 0.5rem;
-  background-color: $color-primary;
-  color: $color-white;
-  border-radius: $radius-sm;
+  padding: $oe-spacing-sm;
+  background-color: $oe-color-primary;
+  color: $oe-color-white;
+  border-radius: $oe-radius-sm;
   border: none;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color $oe-transition-fast;
 
   &:hover {
-    background-color: $color-primary-hover;
+    background-color: $oe-color-primary-hover;
   }
 }
 
@@ -128,6 +128,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }

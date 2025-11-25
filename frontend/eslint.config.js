@@ -13,7 +13,15 @@ import simpleImportSort from "eslint-plugin-simple-import-sort";
 export default [
   // Base configuration and ignores
   {
-    ignores: ["dist", "node_modules", "build", "coverage", "eslint.config.js", "tsconfig.*.json"],
+    ignores: [
+      "dist",
+      "node_modules",
+      "build",
+      "coverage",
+      "eslint.config.js",
+      "tsconfig.*.json",
+      "declaration.d.ts",
+    ],
   },
   // TypeScript and React configurations
   {

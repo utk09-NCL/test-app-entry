@@ -2,28 +2,28 @@
 
 .input {
   width: 100%;
-  background-color: $color-bg;
-  border: 1px solid $color-border;
-  border-radius: $radius-sm;
+  background-color: $oe-color-bg;
+  border: 1px solid $oe-color-border;
+  border-radius: $oe-radius-sm;
   padding: 0.5rem 0.75rem;
-  color: $color-text;
+  color: $oe-color-text;
   font-size: 0.875rem;
   transition: border-color 0.2s, box-shadow 0.2s;
 
   &:focus {
     outline: none;
-    box-shadow: 0 0 0 1px $color-primary;
-    border-color: $color-primary;
+    box-shadow: 0 0 0 1px $oe-color-primary;
+    border-color: $oe-color-primary;
   }
 
   &:hover:not(:focus) {
-    border-color: adjust($color-border, 20%);
+    border-color: adjust($oe-color-border, 20%);
   }
 
   &.error {
-    border-color: $color-sell;
+    border-color: $oe-color-sell;
     &:focus {
-      box-shadow: 0 0 0 1px $color-sell;
+      box-shadow: 0 0 0 1px $oe-color-sell;
     }
   }
 }

@@ -104,8 +104,8 @@ export const FieldController = ({ fieldKey, rowIndex }: FieldControllerProps) =>
   // Extract base and quote currencies from symbol (e.g., "GBPUSD" → GBP, USD)
   // Used by AmountWithCurrency component for toggle button
   const currentPair = currencyPairs.find((p) => p.symbol === symbol);
-  const ccy1 = currentPair?.base || "CCY1"; // Fallback to generic labels if pair not found
-  const ccy2 = currentPair?.quote || "CCY2";
+  const ccy1 = currentPair?.ccy1 || "CCY1"; // Fallback to generic labels if pair not found
+  const ccy2 = currentPair?.ccy2 || "CCY2";
 
   // ===== Debounced Validation =====
   // Don't validate on every keystroke - wait for user to stop typing

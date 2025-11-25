@@ -3,9 +3,9 @@
 .container {
   display: flex;
   width: 100%;
-  border-radius: $radius-sm;
-  background-color: $color-bg;
-  border: 1px solid $color-border;
+  border-radius: $oe-radius-sm;
+  background-color: $oe-color-bg;
+  border: 1px solid $oe-color-border;
   overflow: hidden;
   height: 2.25rem;
 }
@@ -18,20 +18,20 @@
   border: none;
   cursor: pointer;
   background: transparent;
-  color: $color-muted;
+  color: $oe-color-muted;
 
   &:hover {
-    background-color: $color-surface;
+    background-color: $oe-color-surface;
   }
 
   &.active {
-    color: $color-white;
+    color: $oe-color-white;
 
     &.buy {
-      background-color: $color-buy;
+      background-color: $oe-color-buy;
     }
     &.sell {
-      background-color: $color-sell;
+      background-color: $oe-color-sell;
     }
   }
 }

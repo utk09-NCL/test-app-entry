@@ -1,28 +1,92 @@
-$color-bg: #0f172a;
-$color-surface: #1e293b;
-$color-border: #334155;
-$color-primary: #3b82f6;
-$color-primary-hover: #2563eb;
-$color-buy: #10b981;
-$color-sell: #ef4444;
-$color-text: #f8fafc;
-$color-text-primary: #f1f5f9;
-$color-text-secondary: #cbd5e1;
-$color-muted: #94a3b8;
-$color-white: #ffffff;
-$color-error-bg: rgba(127, 29, 29, 0.9);
-$color-success-bg: rgba(20, 83, 45, 0.9);
-$color-bg-secondary: #1e293b;
-$color-bg-hover: #334155;
-$color-overlay: rgba(17, 24, 39, 0.5);
+// ============================================
+// COLOR PALETTE
+// ============================================
+$oe-color-bg: #0f172a;
+$oe-color-surface: #1e293b;
+$oe-color-border: #334155;
+$oe-color-primary: #3b82f6;
+$oe-color-primary-hover: #2563eb;
+$oe-color-primary-dark: #1d4ed8;
+$oe-color-buy: #10b981;
+$oe-color-sell: #ef4444;
+$oe-color-text: #f8fafc;
+$oe-color-text-primary: #f1f5f9;
+$oe-color-text-secondary: #cbd5e1;
+$oe-color-muted: #94a3b8;
+$oe-color-white: #ffffff;
+$oe-color-error-bg: rgba(127, 29, 29, 0.9);
+$oe-color-success-bg: rgba(20, 83, 45, 0.9);
+$oe-color-bg-secondary: #1e293b;
+$oe-color-bg-hover: #334155;
+$oe-color-overlay: rgba(17, 24, 39, 0.5);
 
-$font-mono: "ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas",
+$oe-color-header-bg: #252528;
+$oe-color-header-select-bg: #111111;
+$oe-color-header-border: #333;
+$oe-color-row-bg-odd: #1e1d22;
+$oe-color-row-bg-even: #2e2f31;
+$oe-color-row-hover: rgba(66, 133, 244, 0.1);
+$oe-color-price-up: #4ade80;
+$oe-color-price-down: #f87171;
+$oe-color-status-warning: #eab308;
+$oe-color-success-icon-bg: rgba(20, 83, 45, 0.3);
+$oe-color-success-icon: #4ade80;
+$oe-color-error-light: #fee2e2;
+$oe-color-success-light: #dcfce7;
+$oe-color-error-border: #fcc;
+$oe-color-error-text: #c33;
+$oe-color-error-bg-light: #fee;
+$oe-color-tick-border: #111111;
+$oe-color-label-white: rgba(255, 255, 255, 0.9);
+$oe-color-close-btn: rgba(255, 255, 255, 0.5);
+
+// ============================================
+// TYPOGRAPHY
+// ============================================
+$oe-font-mono: "ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas",
   "monospace";
+$oe-font-system: system-ui, -apple-system, sans-serif;
+$oe-font-courier: "Courier New", monospace;
 
-$radius-sm: 0.25rem;
-$radius-md: 0.375rem;
-$radius-lg: 0.5rem;
-$radius-xl: 0.75rem;
+// ============================================
+// BORDER RADIUS
+// ============================================
+$oe-radius-sm: 0.25rem;
+$oe-radius-md: 0.375rem;
+$oe-radius-lg: 0.5rem;
+$oe-radius-xl: 0.75rem;
+$oe-radius-full: 9999px;
 
-$shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
-  0 4px 6px -2px rgba(0, 0, 0, 0.05);
+// ============================================
+// SHADOWS
+// ============================================
+$oe-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+$oe-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+$oe-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+$oe-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+$oe-shadow-header: 0 2px 4px rgba(0, 0, 0, 0.2);
+$oe-shadow-focus: 0 0 0 2px rgba(255, 255, 255, 0.3);
+$oe-shadow-button: 0 4px 8px rgba(0, 0, 0, 0.15);
+
+// ============================================
+// SPACING
+// ============================================
+$oe-spacing-xs: 0.25rem;
+$oe-spacing-sm: 0.5rem;
+$oe-spacing-md: 0.75rem;
+$oe-spacing-lg: 1rem;
+$oe-spacing-xl: 1.5rem;
+$oe-spacing-2xl: 2rem;
+
+// ============================================
+// TRANSITIONS
+// ============================================
+$oe-transition-fast: 0.2s ease;
+$oe-transition-normal: 0.3s ease;
+$oe-transition-slow: 0.5s ease;
+
+// ============================================
+// OPACITY
+// ============================================
+$oe-opacity-disabled: 0.5;
+$oe-opacity-hover: 0.25;

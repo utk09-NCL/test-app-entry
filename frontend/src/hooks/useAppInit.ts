@@ -24,8 +24,9 @@
  * useAppInit(); // Runs once on mount
  */
 
-import { useQuery, useSubscription } from "@apollo/client";
 import { useEffect } from "react";
+
+import { useQuery, useSubscription } from "@apollo/client";
 
 import { Fdc3Service } from "../api/fdc3/fdc3Service";
 import { mapContextToOrder } from "../api/fdc3/intentMapper";

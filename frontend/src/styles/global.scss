@@ -1,9 +1,32 @@
 @use "./variables" as *;
 
+// ============================================
+// SIZE VARIANTS (for S-M-L functionality)
+// ============================================
+:root {
+  --oe-app-width: 28rem;
+  --oe-app-max-height: 600px;
+}
+
+.fxds-app-size-small {
+  --oe-app-width: 22rem;
+  --oe-app-max-height: 480px;
+}
+
+.fxds-app-size-medium {
+  --oe-app-width: 28rem;
+  --oe-app-max-height: 600px;
+}
+
+.fxds-app-size-large {
+  --oe-app-width: 36rem;
+  --oe-app-max-height: 800px;
+}
+
 body {
-  background-color: $color-bg;
-  color: $color-text;
-  font-family: system-ui, -apple-system, sans-serif;
+  background-color: $oe-color-bg;
+  color: $oe-color-text;
+  font-family: $oe-font-system;
   margin: 0;
   padding: 0;
   overflow: hidden;
@@ -22,16 +45,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: $color-bg;
+  background: $oe-color-bg;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: $color-border;
+  background: $oe-color-border;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: adjust($color-border, 10%);
+  background: adjust($oe-color-border, 10%);
 }
 
 input[type="number"]::-webkit-inner-spin-button,

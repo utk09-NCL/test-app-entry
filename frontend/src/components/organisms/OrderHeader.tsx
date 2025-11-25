@@ -72,7 +72,7 @@ export const OrderHeader = () => {
       minPipStep: 0.0001,
       defaultPipStep: 0.0001,
       defaultTenor: "SPOT",
-      tenor: ["SPOT"],
+      tenor: "SPOT",
       stopLossAllowed: false,
     });
   }

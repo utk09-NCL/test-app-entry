@@ -2,29 +2,29 @@
 
 .container {
   display: flex;
-  gap: 0.5rem;
+  gap: $oe-spacing-sm;
   align-items: center;
   width: 100%;
 }
 
 .toggleButton {
   min-width: 4rem;
-  padding: 0.5rem 1rem;
-  background-color: $color-primary;
-  color: $color-text-primary;
-  border: 1px solid $color-border;
-  border-radius: 4px;
+  padding: $oe-spacing-sm $oe-spacing-lg;
+  background-color: $oe-color-primary;
+  color: $oe-color-text-primary;
+  border: 1px solid $oe-color-border;
+  border-radius: $oe-radius-sm;
   cursor: pointer;
   font-size: 0.875rem;
   font-weight: 600;
-  transition: all 0.2s;
+  transition: all $oe-transition-fast;
 
   &:hover:not(:disabled) {
-    background-color: adjust($color-primary, 10%);
+    background-color: adjust($oe-color-primary, 10%);
   }
 
   &:disabled {
     cursor: not-allowed;
-    opacity: 0.5;
+    opacity: $oe-opacity-disabled;
   }
 }

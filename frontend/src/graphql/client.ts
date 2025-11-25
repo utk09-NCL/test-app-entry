@@ -110,7 +110,7 @@ const cache = new InMemoryCache({
         // Currency pairs are static per order type, cache them
         currencyPairs: {
           // Merge strategy: replace old data with new when orderType changes
-          merge(existing, incoming) {
+          merge(_existing, incoming) {
             return incoming; // Always use fresh data
           },
         },
@@ -153,5 +153,5 @@ export const graphqlClient = new ApolloClient({
 
 // Expose client globally for debugging (dev only)
 if (import.meta.env.DEV) {
-  (window as any).__APOLLO_CLIENT__ = graphqlClient;
+  window.__APOLLO_CLIENT__ = graphqlClient;
 }

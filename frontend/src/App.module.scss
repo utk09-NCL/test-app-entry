@@ -6,18 +6,18 @@
   width: 100%;
   align-items: center;
   justify-content: center;
-  background-color: $color-bg;
+  background-color: $oe-color-bg;
 }
 
 .loadingText {
   margin-top: 1rem;
-  color: $color-muted;
+  color: $oe-color-muted;
   font-size: 0.875rem;
   animation: pulse 2s infinite;
 }
 
 .scrollArea {
-  max-height: 600px;
+  max-height: var(--oe-app-max-height);
   overflow-y: auto;
 }
 

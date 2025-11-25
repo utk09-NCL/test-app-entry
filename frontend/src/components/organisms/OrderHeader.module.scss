@@ -4,48 +4,48 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 1rem 1.5rem;
-  background: #252528;
-  color: white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  padding: $oe-spacing-lg $oe-spacing-xl;
+  background: $oe-color-header-bg;
+  color: $oe-color-white;
+  box-shadow: $oe-shadow-header;
 }
 
 .pairSelector {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: $oe-spacing-sm;
 }
 
 .label {
   font-size: 0.875rem;
   font-weight: 600;
-  color: white;
+  color: $oe-color-white;
   margin: 0;
 }
 
 .selectOverride {
   font-weight: 700;
   font-size: 1rem;
-  background-color: #111111;
-  color: white;
-  border: 1px solid #333;
-  padding: 0.5rem;
-  border-radius: 4px;
+  background-color: $oe-color-header-select-bg;
+  color: $oe-color-white;
+  border: 1px solid $oe-color-header-border;
+  padding: $oe-spacing-sm;
+  border-radius: $oe-radius-sm;
 
   &:focus {
-    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+    box-shadow: $oe-shadow-focus;
   }
 
   option {
-    background-color: #111111;
-    color: white;
+    background-color: $oe-color-header-select-bg;
+    color: $oe-color-white;
   }
 }
 
 .error {
   font-size: 0.75rem;
-  color: #fcc;
+  color: $oe-color-error-border;
   text-align: center;
-  margin-top: 0.25rem;
+  margin-top: $oe-spacing-xs;
 }

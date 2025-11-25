@@ -1,20 +1,20 @@
-@use '../../styles/variables.scss';
+@use '../../styles/variables' as *;
 
 .footer {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  padding: 1.5rem 0 0 0;
-  border-top: 1px solid var(--color-border);
-  margin-top: 1.5rem;
+  gap: $oe-spacing-lg;
+  padding: $oe-spacing-xl 0 0 0;
+  border-top: 1px solid $oe-color-border;
+  margin-top: $oe-spacing-xl;
 }
 
 .globalError {
-  padding: 0.875rem 1rem;
-  background-color: #fee;
-  border: 1px solid #fcc;
-  border-radius: 4px;
-  color: #c33;
+  padding: 0.875rem $oe-spacing-lg;
+  background-color: $oe-color-error-bg-light;
+  border: 1px solid $oe-color-error-border;
+  border-radius: $oe-radius-sm;
+  color: $oe-color-error-text;
   font-size: 0.9rem;
   font-weight: 500;
   text-align: center;
@@ -22,25 +22,25 @@
 
 .submitBtn {
   min-width: 160px;
-  padding: 0.75rem 2rem;
+  padding: $oe-spacing-md $oe-spacing-2xl;
   font-size: 1rem;
   font-weight: 600;
-  color: white;
-  background-color: var(--color-primary);
+  color: $oe-color-white;
+  background-color: $oe-color-primary;
   border: none;
-  border-radius: 4px;
+  border-radius: $oe-radius-sm;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all $oe-transition-fast ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: $oe-spacing-sm;
   align-self: flex-end;
 
   &:hover:not(:disabled) {
-    background-color: var(--color-primary-dark);
+    background-color: $oe-color-primary-dark;
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    box-shadow: $oe-shadow-button;
   }
 
   &:active:not(:disabled) {
@@ -48,7 +48,7 @@
   }
 
   &:disabled {
-    opacity: 0.5;
+    opacity: $oe-opacity-disabled;
     cursor: not-allowed;
   }
 }

@@ -19,7 +19,7 @@
   width: 1rem;
   height: 1rem;
   cursor: pointer;
-  accent-color: $color-primary;
+  accent-color: $oe-color-primary;
 
   &:disabled {
     cursor: not-allowed;
@@ -29,6 +29,6 @@
 
 .checkboxLabel {
   font-size: 0.75rem;
-  color: $color-text-secondary;
+  color: $oe-color-text-secondary;
   font-weight: 500;
 }

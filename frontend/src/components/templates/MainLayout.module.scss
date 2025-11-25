@@ -4,16 +4,16 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: $color-bg;
+  background-color: $oe-color-bg;
 }
 
 .card {
   width: 100%;
-  max-width: 28rem; /* max-w-md */
-  background-color: $color-overlay;
-  border-radius: $radius-xl;
-  border: 1px solid $color-border;
-  box-shadow: $shadow-lg;
+  max-width: var(--oe-app-width);
+  background-color: $oe-color-overlay;
+  border-radius: $oe-radius-xl;
+  border: 1px solid $oe-color-border;
+  box-shadow: $oe-shadow-lg;
   overflow: hidden;
   backdrop-filter: blur(4px);
   position: relative;
@@ -21,25 +21,25 @@
 
 .toast {
   position: absolute;
-  bottom: 1rem;
-  left: 1rem;
-  right: 1rem;
-  padding: 0.75rem;
-  border-radius: $radius-sm;
-  box-shadow: $shadow-lg;
+  bottom: $oe-spacing-lg;
+  left: $oe-spacing-lg;
+  right: $oe-spacing-lg;
+  padding: $oe-spacing-md;
+  border-radius: $oe-radius-sm;
+  box-shadow: $oe-shadow-lg;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  animation: slideUp 0.3s ease-out;
+  animation: slideUp $oe-transition-normal ease-out;
 
   &.error {
-    background-color: $color-error-bg;
-    color: #fee2e2;
+    background-color: $oe-color-error-bg;
+    color: $oe-color-error-light;
   }
 
   &.success {
-    background-color: $color-success-bg;
-    color: #dcfce7;
+    background-color: $oe-color-success-bg;
+    color: $oe-color-success-light;
   }
 }
 
@@ -48,7 +48,7 @@
 }
 
 .closeBtn {
-  color: rgba(255, 255, 255, 0.5);
+  color: $oe-color-close-btn;
   background: none;
   border: none;
   cursor: pointer;
@@ -56,7 +56,7 @@
   line-height: 1;
 
   &:hover {
-    color: $color-white;
+    color: $oe-color-white;
   }
 }
 
@@ -65,6 +65,7 @@
     transform: translateY(1rem);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;

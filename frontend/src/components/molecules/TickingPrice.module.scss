@@ -1,21 +1,23 @@
+@use "../../styles/variables" as *;
+
 .container {
   display: flex;
   justify-content: center;
-  padding: 1.5rem;
-  border-bottom: 2px solid #111111;
+  padding: $oe-spacing-xl;
+  border-bottom: 2px solid $oe-color-tick-border;
 }
 
 .priceBox {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: $oe-spacing-sm;
 }
 
 .label {
   font-size: 0.875rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
+  color: $oe-color-label-white;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -23,15 +25,15 @@
 .price {
   font-size: 2.5rem;
   font-weight: 700;
-  color: white;
-  font-family: "Courier New", monospace;
-  transition: color 0.3s ease;
+  color: $oe-color-white;
+  font-family: $oe-font-courier;
+  transition: color $oe-transition-normal ease;
 }
 
 .price.up {
-  color: #4ade80;
+  color: $oe-color-price-up;
 }
 
 .price.down {
-  color: #f87171;
+  color: $oe-color-price-down;
 }

@@ -5,19 +5,19 @@
   grid-template-columns: 35% 65%;
   grid-template-rows: auto auto;
   align-items: center;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid $color-border;
-  background-color: #1e1d22;
+  padding: $oe-spacing-lg $oe-spacing-xl;
+  border-bottom: 1px solid $oe-color-border;
+  background-color: $oe-color-row-bg-odd;
 
   &.even {
-    background-color: #2e2f31;
+    background-color: $oe-color-row-bg-even;
   }
 
   &.editable {
-    transition: background-color 0.2s;
+    transition: background-color $oe-transition-fast;
 
     &:hover {
-      background-color: rgba(66, 133, 244, 0.1);
+      background-color: $oe-color-row-hover;
     }
   }
 }
@@ -33,7 +33,7 @@
 .label {
   font-size: 0.875rem;
   font-weight: 600;
-  color: $color-muted;
+  color: $oe-color-muted;
 }
 
 .content {
@@ -45,9 +45,9 @@
 .error {
   grid-column: 2;
   grid-row: 2;
-  color: $color-sell;
+  color: $oe-color-sell;
   font-size: 0.75rem;
-  margin-top: 0.25rem;
+  margin-top: $oe-spacing-xs;
   padding-left: 0;
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
