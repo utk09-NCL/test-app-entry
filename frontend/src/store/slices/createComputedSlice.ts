@@ -21,7 +21,8 @@
  * - serverErrors: Async server-side checks (e.g., firm limits)
  * - warnings: Non-blocking hints (e.g., "large trade")
  *
- * Used by: FieldController (validateField), OrderFooter (submitOrder, isFormValid).\n */
+ * Used by: FieldController (validateField), OrderFooter (submitOrder, isFormValid).
+ */
 
 import * as v from "valibot";
 import { StateCreator } from "zustand";
@@ -37,6 +38,245 @@ import type {
 } from "../../graphql/types";
 import { OrderStateData } from "../../types/domain";
 import { BoundState, ComputedSlice } from "../../types/store";
+
+// ============================================================================
+// HELPER TYPES
+// ============================================================================
+
+interface MutationResult {
+  success: boolean;
+  orderId?: string;
+  failureReason?: string;
+}
+
+// ============================================================================
+// EXTRACTED HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Validates the order against the schema.
+ * Returns validation issues if invalid, null if valid.
+ */
+const validateOrderSchema = (values: OrderStateData): { issues: v.BaseIssue<unknown>[] } | null => {
+  const schema = SCHEMA_MAP[values.orderType];
+  const result = v.safeParse(schema, values);
+  return result.success ? null : { issues: result.issues };
+};
+
+/**
+ * Builds the CREATE order mutation variables.
+ */
+const buildCreateOrderVariables = (values: OrderStateData) => ({
+  orderEntry: {
+    currencyPair: values.symbol,
+    side: values.direction,
+    orderType: values.orderType,
+    amount: values.notional,
+    ccy: values.symbol.substring(0, 3), // Extract base currency (e.g., "GBP" from "GBPUSD")
+    limitPrice: values.limitPrice,
+    stopPrice: values.stopPrice,
+    liquidityPool: values.liquidityPool,
+    account: values.account,
+    timeInForce: values.timeInForce,
+    startTime: values.startTime,
+  },
+});
+
+/**
+ * Builds the AMEND order mutation variables.
+ */
+const buildAmendOrderVariables = (values: OrderStateData) => ({
+  amendOrder: {
+    orderId: values.orderId,
+    amount: values.notional,
+    limitPrice: values.limitPrice,
+    stopPrice: values.stopPrice,
+    timeInForce: values.timeInForce,
+  },
+});
+
+/**
+ * Executes the CREATE order mutation.
+ * Uses observable pattern instead of direct mutate() for flexibility.
+ */
+const executeCreateOrder = async (values: OrderStateData): Promise<MutationResult> => {
+  return new Promise((resolve, reject) => {
+    const variables = buildCreateOrderVariables(values);
+
+    // Using observable subscription pattern as alternative to graphqlClient.mutate()
+    // This allows for more control and works in non-React contexts
+    const observable = graphqlClient.mutate<CreateOrderResponse>({
+      mutation: CREATE_ORDER_MUTATION,
+      variables,
+    });
+
+    observable
+      .then((result) => {
+        const response = result.data?.createOrder;
+        if (response?.result === "SUCCESS" && response.orderId) {
+          resolve({
+            success: true,
+            orderId: response.orderId,
+          });
+        } else {
+          resolve({
+            success: false,
+            failureReason: response?.failureReason || "Order submission failed",
+          });
+        }
+      })
+      .catch((error) => {
+        reject(error);
+      });
+  });
+};
+
+/**
+ * Executes the AMEND order mutation.
+ * Uses observable pattern instead of direct mutate() for flexibility.
+ */
+const executeAmendOrder = async (values: OrderStateData): Promise<MutationResult> => {
+  return new Promise((resolve, reject) => {
+    const variables = buildAmendOrderVariables(values);
+
+    const observable = graphqlClient.mutate<AmendOrderResponse>({
+      mutation: AMEND_ORDER_MUTATION,
+      variables,
+    });
+
+    observable
+      .then((result) => {
+        const response = result.data?.amendOrder;
+        if (response?.result === "SUCCESS") {
+          resolve({
+            success: true,
+            orderId: response.orderId,
+          });
+        } else {
+          resolve({
+            success: false,
+            failureReason: response?.failureReason || "Amendment failed",
+          });
+        }
+      })
+      .catch((error) => {
+        reject(error);
+      });
+  });
+};
+
+// ============================================================================
+// STATE UPDATE HANDLERS
+// ============================================================================
+
+/** Type for Zustand set function */
+type SetState = (fn: (state: BoundState) => void) => void;
+/** Type for Zustand get function */
+type GetState = () => BoundState;
+
+interface MutationSuccessContext {
+  appInstanceId: string;
+  values: OrderStateData;
+  isAmending: boolean;
+  mutationResult: MutationResult;
+}
+
+interface MutationErrorContext {
+  appInstanceId: string;
+  error: unknown;
+}
+
+/**
+ * Handles successful mutation response (both create and amend).
+ * Updates store state based on the result.
+ */
+const handleMutationSuccess = (
+  set: SetState,
+  _get: GetState,
+  context: MutationSuccessContext
+): void => {
+  const { appInstanceId, values, isAmending, mutationResult } = context;
+
+  if (mutationResult.success) {
+    // SUCCESS: Order created/amended
+    console.log(
+      `[${appInstanceId}] Order ${mutationResult.orderId} ${isAmending ? "amended" : "created"} successfully`
+    );
+
+    set((state) => {
+      state.status = "READY";
+      state.editMode = "viewing";
+
+      // Only set currentOrderId for new orders (amend keeps existing)
+      if (!isAmending && mutationResult.orderId) {
+        state.currentOrderId = mutationResult.orderId;
+      }
+
+      state.toastMessage = {
+        type: "success",
+        text: isAmending
+          ? `Order ${values.symbol} Amended!`
+          : `Order ${values.direction} ${values.symbol} Placed!`,
+      };
+
+      // Clear validation state on success
+      state.serverErrors = {};
+      state.warnings = {};
+    });
+  } else {
+    // FAILURE: Server rejected the order
+    console.error(
+      `[${appInstanceId}] ${isAmending ? "Amendment" : "Order creation"} failed:`,
+      mutationResult.failureReason
+    );
+
+    set((state) => {
+      state.status = "READY";
+
+      // If amending, go back to viewing mode since order exists
+      if (isAmending) {
+        state.editMode = "viewing";
+      }
+
+      state.toastMessage = {
+        type: "error",
+        text: mutationResult.failureReason || "Submission failed",
+      };
+    });
+  }
+};
+
+/**
+ * Handles mutation errors (network failures, GraphQL errors).
+ * Gracefully recovers state and shows appropriate error message.
+ */
+const handleMutationError = (set: SetState, get: GetState, context: MutationErrorContext): void => {
+  const { appInstanceId, error } = context;
+
+  console.error(`[${appInstanceId}] Submission Error:`, error);
+
+  // Check if we have an orderId (meaning order might have been submitted)
+  const hasOrderId = get().currentOrderId !== null;
+
+  set((state) => {
+    state.status = "READY";
+
+    if (hasOrderId) {
+      // Order was submitted, but we got an error (maybe subscription issue)
+      state.editMode = "viewing";
+      state.toastMessage = {
+        type: "error",
+        text: "Error tracking order status",
+      };
+    } else {
+      // Order submission failed
+      state.toastMessage = {
+        type: "error",
+        text: "Submission Failed",
+      };
+    }
+  });
+};
 
 export const createComputedSlice: StateCreator<
   BoundState,
@@ -339,6 +579,7 @@ export const createComputedSlice: StateCreator<
     }
 
     const values = get().getDerivedValues();
+    const isAmending = currentEditMode === "amending" && !!values.orderId;
 
     // Start submission (loading state)
     set((state) => {
@@ -346,16 +587,15 @@ export const createComputedSlice: StateCreator<
     });
 
     // ========================================
-    // Final Full Validation
+    // Step 1: Validate Order
     // ========================================
-    const schema = SCHEMA_MAP[values.orderType];
-    const result = v.safeParse(schema, values);
+    const validationResult = validateOrderSchema(values);
 
-    if (!result.success) {
+    if (validationResult) {
       // Validation failed - collect all field errors
       set((state) => {
-        state.status = "READY"; // Back to ready state
-        result.issues.forEach((issue) => {
+        state.status = "READY";
+        validationResult.issues.forEach((issue) => {
           const path = issue.path;
           if (path && path.length > 0) {
             const key = path[0].key as string;
@@ -367,134 +607,30 @@ export const createComputedSlice: StateCreator<
           text: "Please fix validation errors.",
         };
       });
-      return; // Don't submit invalid order
+      return;
     }
 
     // ========================================
-    // GraphQL Mutation
+    // Step 2: Execute Mutation
     // ========================================
     try {
-      const isAmending = currentEditMode === "amending" && values.orderId;
+      const mutationResult = isAmending
+        ? await executeAmendOrder(values)
+        : await executeCreateOrder(values);
 
-      if (isAmending) {
-        // AMEND ORDER
-        const { data } = await graphqlClient.mutate<AmendOrderResponse>({
-          mutation: AMEND_ORDER_MUTATION,
-          variables: {
-            amendOrder: {
-              orderId: values.orderId,
-              amount: values.notional,
-              limitPrice: values.limitPrice,
-              stopPrice: values.stopPrice,
-              timeInForce: values.timeInForce,
-            },
-          },
-        });
-
-        const response = data?.amendOrder;
-
-        if (response?.result === "SUCCESS") {
-          console.log(`[${appInstanceId}] Order ${response.orderId} amended successfully`);
-
-          set((state) => {
-            state.status = "READY";
-            state.editMode = "viewing";
-            state.toastMessage = {
-              type: "success",
-              text: `Order ${values.symbol} Amended!`,
-            };
-            state.serverErrors = {};
-            state.warnings = {};
-          });
-        } else {
-          // Amendment failed
-          console.error(
-            `[${appInstanceId}] Amendment failed:`,
-            response?.failureReason || "Unknown error"
-          );
-
-          set((state) => {
-            state.status = "READY";
-            state.editMode = "viewing"; // Go to viewing since order exists
-            state.toastMessage = {
-              type: "error",
-              text: response?.failureReason || "Amendment failed",
-            };
-          });
-        }
-      } else {
-        // CREATE ORDER
-        const { data } = await graphqlClient.mutate<CreateOrderResponse>({
-          mutation: CREATE_ORDER_MUTATION,
-          variables: {
-            orderEntry: {
-              currencyPair: values.symbol,
-              side: values.direction,
-              orderType: values.orderType,
-              amount: values.notional,
-              ccy: values.symbol.substring(0, 3), // Extract base currency (e.g., "GBP" from "GBPUSD")
-              limitPrice: values.limitPrice,
-              stopPrice: values.stopPrice,
-              liquidityPool: values.liquidityPool,
-              account: values.account,
-              timeInForce: values.timeInForce,
-              startTime: values.startTime,
-            },
-          },
-        });
-
-        const response = data?.createOrder;
-
-        if (response?.result === "SUCCESS" && response.orderId) {
-          console.log(`[${appInstanceId}] Order ${response.orderId} created successfully`);
-
-          set((state) => {
-            state.status = "READY";
-            state.editMode = "viewing"; // Show read-only view
-            state.currentOrderId = response.orderId; // Store for ORDER_SUBSCRIPTION
-            state.toastMessage = {
-              type: "success",
-              text: `Order ${values.direction} ${values.symbol} Placed!`,
-            };
-            state.serverErrors = {};
-            state.warnings = {};
-          });
-        } else {
-          // Order creation failed
-          console.error(
-            `[${appInstanceId}] Order creation failed:`,
-            response?.failureReason || "Unknown error"
-          );
-
-          set((state) => {
-            state.status = "READY";
-            state.toastMessage = {
-              type: "error",
-              text: response?.failureReason || "Order submission failed",
-            };
-          });
-        }
-      }
-    } catch (e) {
-      // Network/GraphQL error
-      console.error(`[${appInstanceId}] Submission Error:`, e);
-
-      // Check if we have an orderId (meaning order might have been submitted)
-      const hasOrderId = get().currentOrderId !== null;
-
-      set((state) => {
-        state.status = "READY";
-        if (hasOrderId) {
-          // Order was submitted, but we got an error (maybe subscription issue)
-          state.editMode = "viewing";
-          state.toastMessage = {
-            type: "error",
-            text: "Error tracking order status",
-          };
-        } else {
-          // Order submission failed
-          state.toastMessage = { type: "error", text: "Submission Failed" };
-        }
+      // ========================================
+      // Step 3: Handle Response
+      // ========================================
+      handleMutationSuccess(set, get, {
+        appInstanceId,
+        values,
+        isAmending,
+        mutationResult,
+      });
+    } catch (error) {
+      handleMutationError(set, get, {
+        appInstanceId,
+        error,
       });
     }
   },
