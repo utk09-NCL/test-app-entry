@@ -59,7 +59,7 @@ mutation CreateOrder {
     orderEntry: {
       currencyPair: "GBPUSD"
       side: BUY
-      orderType: LIMIT
+      orderType: TAKE_PROFIT
       amount: 1000000
       ccy: "GBP"
       limitPrice: 1.27

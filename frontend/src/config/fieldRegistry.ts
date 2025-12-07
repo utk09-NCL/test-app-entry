@@ -5,7 +5,10 @@
  * It maps field keys (e.g., "limitPrice") to their:
  * - Display label ("Limit Price")
  * - Component type (Input, Select, Toggle, etc.)
- * - Component-specific props (min, max, options, etc.)
+ *
+ * Note: Component-specific props (min, max, step, etc.) are NOT stored here.
+ * Each component imports its own config from constants.ts (e.g., AMOUNT_CONFIG, PRICE_CONFIG).
+ * This keeps the registry lean and avoids dead code.
  *
  * This enables:
  * - Dynamic form rendering based on orderConfig
@@ -25,91 +28,120 @@ export interface FieldDefinition {
   component:
     | "InputNumber" // Standard numeric input
     | "InputText" // Standard text input
+    | "InputTime" // Time input (HH:mm:ss)
+    | "InputDate" // Date picker (YYYY-MM-DD)
     | "Select" // Dropdown selection
     | "Toggle" // Segmented control (BUY/SELL)
+    | "RangeSlider" // Range slider for target execution rate
     | "DateTime" // Date/time picker
     | "AmountWithCurrency" // Amount with currency toggle
     | "LimitPriceWithCheckbox"; // Price input with "Grab" checkbox
-  /** Additional props passed to the component */
-  props?: Record<string, unknown>;
 }
 
 /**
  * Registry of all form fields.
- * Key = field name in OrderStateData
+ * Key = field name in OrderStateData (server-aligned)
  * Value = field definition
  */
 export const FIELD_REGISTRY: Record<string, FieldDefinition> = {
   /** BUY/SELL toggle switch */
-  direction: {
+  side: {
     label: "Direction",
     component: "Toggle",
-    props: {
-      options: [
-        { label: "BUY", value: "BUY", variant: "buy" }, // Green styling
-        { label: "SELL", value: "SELL", variant: "sell" }, // Red styling
-      ],
-    },
   },
   /** Currency pair symbol (usually set by OrderHeader, not editable in form) */
-  symbol: {
+  currencyPair: {
     label: "Symbol",
     component: "InputText",
-    props: { disabled: true },
   },
-  /** Notional amount with currency toggle (GBP/USD) */
-  notional: {
+  /** Amount with currency toggle (GBP/USD) */
+  amount: {
     label: "Amount",
     component: "AmountWithCurrency",
-    props: { min: 1000, step: 100000, placeholder: "1,000,000" },
   },
-  /** Limit price with optional "Grab" checkbox (FLOAT orders only) */
-  limitPrice: {
+  /** Price level for limit/stop/take-profit orders */
+  level: {
     label: "Limit Price",
-    component: "LimitPriceWithCheckbox",
-    props: { precision: 5, step: 0.0001 },
-  },
-  /** Stop price for STOP_LOSS orders */
-  stopPrice: {
-    label: "Stop Price",
     component: "InputNumber",
-    props: { precision: 5, step: 0.0001 },
+  },
+  /** Iceberg size for TAKE_PROFIT orders */
+  iceberg: {
+    label: "Iceberg",
+    component: "InputNumber",
   },
   /** Liquidity pool selection (options loaded from server) */
   liquidityPool: {
     label: "Liquidity Pool",
     component: "Select",
-    props: { placeholder: "Select Pool" },
   },
   /** Account selection (options loaded from server) */
   account: {
     label: "Account",
     component: "Select",
-    props: { placeholder: "Select Account" },
   },
-  /** Time In Force - how long order remains active */
-  timeInForce: {
-    label: "Time In Force",
+  /** Expiry configuration */
+  expiry: {
+    label: "Expiry",
     component: "Select",
-    props: {
-      options: [
-        { label: "Good Till Cancel (GTC)", value: "GTC" }, // Open until filled or cancelled
-        { label: "Immediate Or Cancel (IOC)", value: "IOC" }, // Fill immediately or cancel
-        { label: "Fill Or Kill (FOK)", value: "FOK" }, // Fill completely or cancel
-        { label: "Good Till Date (GTD)", value: "GTD" }, // Open until specified date
-      ],
-    },
   },
   /** Start time for scheduled orders */
   startTime: {
     label: "Start Time",
-    component: "DateTime",
-    props: {},
+    component: "InputTime",
   },
-  /** Order status (read-only, shown in view/amend mode) */
-  status: {
-    label: "Status",
+  /** Target execution rate for FLOAT/LIQUIDITY_SEEKER */
+  targetExecutionRate: {
+    label: "Target Rate",
+    component: "RangeSlider",
+  },
+  /** Participation rate for PARTICIPATION orders */
+  participationRate: {
+    label: "Participation Rate",
+    component: "InputNumber",
+  },
+  /** Execution style for execution orders */
+  executionStyle: {
+    label: "Execution Style",
+    component: "Select",
+  },
+  /** Trigger side for STOP_LOSS orders */
+  triggerSide: {
+    label: "Trigger Side",
+    component: "Select",
+  },
+  /** Execution info (read-only, shown in view/amend mode) */
+  execution: {
+    label: "Execution",
     component: "InputText",
-    props: { disabled: true },
+  },
+  /** Start mode for scheduled orders (Start Now vs Start At) */
+  startMode: {
+    label: "Start",
+    component: "Select",
+  },
+  /** Timezone for start time and other time-based fields */
+  timeZone: {
+    label: "Timezone",
+    component: "Select",
+  },
+  /** Start date for scheduled orders (calendar picker) */
+  startDate: {
+    label: "Start Date",
+    component: "InputDate",
+  },
+  /** Expiry date for GTD/GTT orders (calendar picker) */
+  expiryDate: {
+    label: "Expiry Date",
+    component: "InputDate",
+  },
+  /** Expiry time for GTD/GTT orders */
+  expiryTime: {
+    label: "Expiry Time",
+    component: "InputTime",
+  },
+  /** Expiry timezone for GTD/GTT orders */
+  expiryTimeZone: {
+    label: "Expiry Timezone",
+    component: "Select",
   },
 };

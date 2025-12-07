@@ -1,0 +1,147 @@
+@use "../../styles/variables" as *;
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: $oe-color-overlay;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeIn $oe-transition-fast;
+}
+
+.dialog {
+  background: $oe-color-surface;
+  border: 1px solid $oe-color-border;
+  border-radius: $oe-radius-lg;
+  box-shadow: $oe-shadow-xl;
+  max-width: 400px;
+  width: 90%;
+  padding: $oe-spacing-xl;
+  animation: slideIn $oe-transition-fast;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: $oe-spacing-sm;
+  margin-bottom: $oe-spacing-lg;
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
+  color: $oe-color-status-warning;
+}
+
+.title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: $oe-color-text;
+  margin: 0;
+}
+
+.message {
+  color: $oe-color-text-secondary;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin-bottom: $oe-spacing-lg;
+}
+
+.intentDetails {
+  background: $oe-color-bg;
+  border: 1px solid $oe-color-border;
+  border-radius: $oe-radius-md;
+  padding: $oe-spacing-md;
+  margin-bottom: $oe-spacing-xl;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  padding: $oe-spacing-xs 0;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid $oe-color-border;
+  }
+}
+
+.detailLabel {
+  color: $oe-color-muted;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.detailValue {
+  color: $oe-color-text;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: $oe-font-mono;
+}
+
+.actions {
+  display: flex;
+  gap: $oe-spacing-md;
+  justify-content: flex-end;
+}
+
+.button {
+  padding: $oe-spacing-sm $oe-spacing-lg;
+  border-radius: $oe-radius-md;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all $oe-transition-fast;
+  border: none;
+
+  &:focus {
+    outline: none;
+    box-shadow: $oe-shadow-focus;
+  }
+}
+
+.rejectButton {
+  background: transparent;
+  border: 1px solid $oe-color-border;
+  color: $oe-color-text-secondary;
+
+  &:hover {
+    background: $oe-color-bg-hover;
+    color: $oe-color-text;
+  }
+}
+
+.acceptButton {
+  background: $oe-color-primary;
+  color: $oe-color-white;
+
+  &:hover {
+    background: $oe-color-primary-hover;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

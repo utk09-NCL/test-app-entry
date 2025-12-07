@@ -1,7 +1,7 @@
 [
   {
-    "name": "Limit Order",
-    "orderType": "LIMIT",
+    "name": "Aggressive Order",
+    "orderType": "AGGRESSIVE",
     "fixingCombinations": [],
     "liquidityPools": [
       {
@@ -15,8 +15,8 @@
     ]
   },
   {
-    "name": "Market Order",
-    "orderType": "MARKET",
+    "name": "Liquidity Seeker",
+    "orderType": "LIQUIDITY_SEEKER",
     "fixingCombinations": [],
     "liquidityPools": [
       {
@@ -61,6 +61,10 @@
       {
         "name": "Gator Liquid",
         "value": "GATOR_POOL_1"
+      },
+      {
+        "name": "Float Pool",
+        "value": "FLOAT_POOL"
       }
     ]
   },

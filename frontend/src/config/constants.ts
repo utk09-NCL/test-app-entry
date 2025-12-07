@@ -57,7 +57,7 @@ export const AMOUNT_CONFIG = {
  */
 export const VALIDATION_CONFIG = {
   /** Debounce delay for field validation (ms) - prevents validation on every keystroke */
-  DEBOUNCE_MS: 50,
+  DEBOUNCE_MS: 300,
   /** Simulated network delay for async validation (ms) */
   SERVER_VALIDATION_DELAY_MS: 300,
 } as const;

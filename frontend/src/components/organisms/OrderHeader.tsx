@@ -30,13 +30,13 @@ export const OrderHeader = () => {
   // Loaded during app initialization (useAppInit hook)
   const pairs = useOrderEntryStore((s) => s.currencyPairs);
 
-  // Get currently selected symbol (e.g., "GBPUSD")
+  // Get currently selected currencyPair (e.g., "GBPUSD")
   // This comes from the merged state (baseValues + dirtyValues)
-  const symbol = useOrderEntryStore((s) => s.getDerivedValues().symbol);
+  const currencyPair = useOrderEntryStore((s) => s.getDerivedValues().currencyPair);
 
   // Get edit mode and reference data errors
   const editMode = useOrderEntryStore((s) => s.editMode);
-  const refDataError = useOrderEntryStore((s) => s.refDataErrors.symbol);
+  const refDataError = useOrderEntryStore((s) => s.refDataErrors.currencyPair);
 
   // Action to update any form field value
   const setFieldValue = useOrderEntryStore((s) => s.setFieldValue);
@@ -45,26 +45,26 @@ export const OrderHeader = () => {
   // Determine if symbol selector should be disabled (read-only in viewing/amending modes)
   const isReadOnly = editMode === "viewing" || editMode === "amending";
 
-  // Handle symbol change
-  const handleSymbolChange = (newSymbol: string) => {
-    setFieldValue("symbol", newSymbol);
+  // Handle currencyPair change
+  const handleCurrencyPairChange = (newCurrencyPair: string) => {
+    setFieldValue("currencyPair", newCurrencyPair);
     // Re-validate reference data after change
     // Zustand updates are synchronous, so no setTimeout needed
     validateRefData();
   };
 
   // Build currency pair options
-  // If current symbol is unavailable, add it to the list
+  // If current currencyPair is unavailable, add it to the list
   const symbolOptions = [...pairs];
-  const currentSymbolExists = pairs.some((p) => p.symbol === symbol);
+  const currentSymbolExists = pairs.some((p) => p.symbol === currencyPair);
 
-  if (symbol && !currentSymbolExists) {
-    // Add unavailable symbol to dropdown
+  if (currencyPair && !currentSymbolExists) {
+    // Add unavailable currencyPair to dropdown
     symbolOptions.unshift({
-      symbol,
-      id: symbol,
-      ccy1: symbol.slice(0, 3),
-      ccy2: symbol.slice(3, 6),
+      symbol: currencyPair,
+      id: currencyPair,
+      ccy1: currencyPair.slice(0, 3),
+      ccy2: currencyPair.slice(3, 6),
       ccy1Deliverable: false,
       ccy2Deliverable: false,
       ccy1Onshore: false,
@@ -92,8 +92,8 @@ export const OrderHeader = () => {
           <Select
             id="currency-pair-select"
             name="currencyPair"
-            value={symbol}
-            onChange={(e) => handleSymbolChange(e.target.value)}
+            value={currencyPair}
+            onChange={(e) => handleCurrencyPairChange(e.target.value)}
             className={styles.selectOverride}
             hasError={!!refDataError}
             disabled={isReadOnly}
@@ -102,7 +102,7 @@ export const OrderHeader = () => {
             {symbolOptions.map((p) => (
               <option key={p.symbol} value={p.symbol}>
                 {p.symbol}
-                {!currentSymbolExists && p.symbol === symbol ? " (Unavailable)" : ""}
+                {!currentSymbolExists && p.symbol === currencyPair ? " (Unavailable)" : ""}
               </option>
             ))}
           </Select>
@@ -111,9 +111,9 @@ export const OrderHeader = () => {
       </div>
 
       {/* Live Price Feed */}
-      {/* Shows real-time BUY and SELL prices for the selected symbol */}
+      {/* Shows real-time BUY and SELL prices for the selected currencyPair */}
       {/* // TODO (Phase 5): This will subscribe to WebSocket price updates */}
-      <TickingPrice symbol={symbol} />
+      <TickingPrice symbol={currencyPair} />
     </>
   );
 };

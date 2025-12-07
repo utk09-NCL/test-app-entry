@@ -33,6 +33,17 @@ export const CCY_STATIC_QUERY = gql`
   }
 `;
 
+export const VALIDATE_FIELD_QUERY = gql`
+  query ValidateField($input: ValidateFieldInput!) {
+    validateField(input: $input) {
+      field
+      ok
+      type
+      message
+    }
+  }
+`;
+
 export const ORDER_TYPES_LIQUIDITY_POOLS_QUERY = gql`
   query OrderTypeLiquidity {
     orderTypesWithPools {

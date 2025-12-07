@@ -13,7 +13,7 @@
  *
  * LocalStorage Keys:
  * - `fx-order-reorder-mode`: "true" | "false" - enables drag handles and banner
- * - `fx-order-field-order`: { "LIMIT": [...], "MARKET": [...] } - persisted orders
+ * - `fx-order-field-order`: { "TAKE_PROFIT": [...], "LIQUIDITY_SEEKER": [...] } - persisted orders
  *
  * Used by: OrderForm (passed as props to child components)
  */

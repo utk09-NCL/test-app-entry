@@ -6,6 +6,7 @@
  *
  * Features:
  * - Drag and drop reordering of form fields
+ * - Dynamic field visibility based on form state
  * - Smooth animations during drag operations
  * - Auto-save on reorder via props callback
  * - Collision detection for accurate drop targets
@@ -34,7 +35,9 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 
+import { filterVisibleFields } from "../../config/visibilityRules";
 import { FieldOrderHookReturn } from "../../hooks/useFieldOrder";
+import { useOrderEntryStore } from "../../store";
 import { OrderStateData, OrderType } from "../../types/domain";
 
 import { SortableFieldItem } from "./SortableFieldItem";
@@ -61,8 +64,32 @@ export const ReorderableFieldList = ({
 }: ReorderableFieldListProps) => {
   const { isReorderMode, getFieldOrder, updateFieldOrder } = fieldOrder;
 
+  // Get only the specific form values needed for visibility rules
+  // Using individual selectors prevents infinite re-render loop
+  const currentOrderType = useOrderEntryStore((s) => s.getDerivedValues().orderType);
+  const expiry = useOrderEntryStore((s) => s.getDerivedValues().expiry);
+  const startMode = useOrderEntryStore((s) => s.getDerivedValues().startMode);
+  const liquidityPool = useOrderEntryStore((s) => s.getDerivedValues().liquidityPool);
+
   // Get current field order for this order type
-  const fields = getFieldOrder(orderType, isViewMode);
+  const allFields = getFieldOrder(orderType, isViewMode);
+
+  // Filter fields by visibility rules (e.g., hide level for non-STOP_LOSS orders)
+  // Memoize form values for visibility check to prevent unnecessary recalculations
+  const formValuesForVisibility = useMemo<Partial<OrderStateData>>(
+    () => ({
+      orderType: currentOrderType,
+      ...(expiry && { expiry }),
+      ...(startMode && { startMode }),
+      ...(liquidityPool && { liquidityPool }),
+    }),
+    [currentOrderType, expiry, startMode, liquidityPool]
+  );
+
+  const fields = useMemo(
+    () => filterVisibleFields(allFields, formValuesForVisibility),
+    [allFields, formValuesForVisibility]
+  );
 
   // Memoize sortable items array to avoid re-creating on every render
   // This is properly typed as string[] which SortableContext expects
@@ -83,18 +110,20 @@ export const ReorderableFieldList = ({
 
   /**
    * Handle drag end - update field order
+   * Uses allFields (unfiltered) to preserve order of hidden fields
    */
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
 
       if (over && active.id !== over.id) {
-        const oldIndex = fields.indexOf(active.id as keyof OrderStateData);
-        const newIndex = fields.indexOf(over.id as keyof OrderStateData);
+        // Use allFields for reordering to preserve hidden fields
+        const oldIndex = allFields.indexOf(active.id as keyof OrderStateData);
+        const newIndex = allFields.indexOf(over.id as keyof OrderStateData);
 
         if (oldIndex !== -1 && newIndex !== -1) {
           // Create new array with reordered fields
-          const newFields = [...fields];
+          const newFields = [...allFields];
           const [movedItem] = newFields.splice(oldIndex, 1);
           newFields.splice(newIndex, 0, movedItem);
 
@@ -103,7 +132,7 @@ export const ReorderableFieldList = ({
         }
       }
     },
-    [fields, orderType, updateFieldOrder]
+    [allFields, orderType, updateFieldOrder]
   );
 
   // Check if reordering should be enabled (only in create mode, not view mode)
@@ -113,8 +142,8 @@ export const ReorderableFieldList = ({
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={sortableItems} strategy={verticalListSortingStrategy}>
         {fields.map((fieldKey, index) => {
-          // 'status' field cannot be reordered (always pinned at top)
-          const isReorderable = fieldKey !== "status";
+          // 'execution' field cannot be reordered (always pinned at top in view mode)
+          const isReorderable = fieldKey !== "execution";
 
           return (
             <SortableFieldItem

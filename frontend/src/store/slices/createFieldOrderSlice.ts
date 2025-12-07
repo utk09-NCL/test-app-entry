@@ -14,7 +14,7 @@
  *
  * LocalStorage Keys:
  * - `fx-order-reorder-mode`: "true" | "false" - enables drag handles and banner
- * - `fx-order-field-order`: { "LIMIT": [...], "MARKET": [...] } - persisted orders
+ * - `fx-order-field-order`: { "TAKE_PROFIT": [...], "LIQUIDITY_SEEKER": [...] } - persisted orders
  *
  * State Architecture:
  * - `fieldOrders`: Persisted state (from localStorage)
@@ -25,7 +25,7 @@
 
 import { StateCreator } from "zustand";
 
-import { ORDER_TYPES } from "../../config/orderConfig";
+import { getViewFields, ORDER_TYPES } from "../../config/orderConfig";
 import { OrderStateData, OrderType } from "../../types/domain";
 import { BoundState } from "../../types/store";
 
@@ -172,11 +172,12 @@ export const createFieldOrderSlice: StateCreator<
     if (!config) return [];
 
     // Get the appropriate fields based on view mode
-    const configFields = isViewMode ? config.viewFields : config.fields;
+    // viewFields = ["execution", ...fields] - derived dynamically via getViewFields
+    const configFields = isViewMode ? getViewFields(orderType) : config.fields;
 
-    // Separate 'status' field (always pinned at top in view mode)
-    const statusField = isViewMode ? configFields.filter((f) => f === "status") : [];
-    const orderableConfigFields = configFields.filter((f) => f !== "status");
+    // Separate 'execution' field (always pinned at top in view mode)
+    const executionField = isViewMode ? configFields.filter((f) => f === "execution") : [];
+    const orderableConfigFields = configFields.filter((f) => f !== "execution");
 
     // In reorder mode, check draft first, then fall back to persisted
     // Outside reorder mode, only use persisted
@@ -202,8 +203,8 @@ export const createFieldOrderSlice: StateCreator<
       orderedFields = orderableConfigFields;
     }
 
-    // In view mode, prepend status field
-    return [...statusField, ...orderedFields];
+    // In view mode, prepend execution field
+    return [...executionField, ...orderedFields];
   },
 
   /**
@@ -219,8 +220,8 @@ export const createFieldOrderSlice: StateCreator<
    * Only updates draft state (not persisted until Save).
    */
   updateFieldOrder: (orderType: OrderType, newOrder: (keyof OrderStateData)[]): void => {
-    // Filter out 'status' before saving (it's always pinned)
-    const orderToSave = newOrder.filter((f) => f !== "status");
+    // Filter out 'execution' before saving (it's always pinned)
+    const orderToSave = newOrder.filter((f) => f !== "execution");
 
     set((state) => {
       state.draftFieldOrders[orderType] = orderToSave;

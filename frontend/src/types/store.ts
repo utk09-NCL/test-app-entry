@@ -3,12 +3,21 @@
  *
  * This file defines the shape of the global Zustand store.
  * The store is composed of multiple "slices" using the slice pattern:
+ *
+ * Priority-Based Layered Slices (for form state):
+ * - DefaultsSlice: Hardcoded defaults (Priority 1 - lowest)
+ * - UserPrefsSlice: User preferences from server (Priority 2)
+ * - Fdc3IntentSlice: FDC3 intent data (Priority 3)
+ * - UserInteractionSlice: User manual input (Priority 4 - highest)
+ *
+ * Other Slices:
  * - AppSlice: Lifecycle and UI mode
  * - RefDataSlice: Server-loaded dropdown options
- * - InitialOrderSlice: Default order values
- * - UserInteractionSlice: User edits and field state
- * - ComputedSlice: Derived values, validation, submission
+ * - DerivedSlice: Computed form values from all layers
+ * - ValidationSlice: Field and form validation
+ * - SubmissionSlice: Order submission and amendment
  * - PriceSlice: Current market prices
+ * - FieldOrderSlice: Field ordering preferences
  *
  * Why slices?
  * - Separation of concerns (each slice has one responsibility)
@@ -21,7 +30,10 @@
  * Used by: Store creation in src/store/index.ts, component selectors.
  */
 
+import { DefaultsSlice } from "../store/slices/createDefaultsSlice";
+import { Fdc3IntentSlice } from "../store/slices/createFdc3IntentSlice";
 import { FieldOrderSlice } from "../store/slices/createFieldOrderSlice";
+import { UserPrefsSlice } from "../store/slices/createUserPrefsSlice";
 
 import { Account, CurrencyPair, LiquidityPool, OrderStateData } from "./domain";
 
@@ -79,23 +91,12 @@ export interface RefDataSlice {
 }
 
 /**
- * Initial Order Slice - Default order values.
- */
-export interface InitialOrderSlice {
-  /** Base order values (defaults or server presets) */
-  baseValues: Partial<OrderStateData>;
-  /** Update base values (for FDC3 context or presets) */
-  setBaseValues: (values: Partial<OrderStateData>) => void;
-}
-
-/**
- * User Interaction Slice - User edits and field state.
+ * User Interaction Slice - User manual input (Priority 4 - highest).
+ * Stores fields the user has manually edited.
  */
 export interface UserInteractionSlice {
   /** User-modified field values (overlay on baseValues) */
   dirtyValues: Partial<OrderStateData>;
-  /** Fields the user has interacted with (tracked but not currently used for error gating) */
-  touchedFields: Record<string, boolean>;
   /** Update a single field value */
   setFieldValue: <K extends keyof OrderStateData>(
     field: K,
@@ -106,15 +107,22 @@ export interface UserInteractionSlice {
 }
 
 /**
- * Computed Slice - Derived values, validation, and submission.
- * This is the "brain" of the order entry system.
+ * Derived Slice - Computed form values from all layers.
+ * Merges defaults, user prefs, FDC3 intent, and user input.
  */
-export interface ComputedSlice {
-  // Getters
-  /** Get final merged order state (base + user edits) */
+export interface DerivedSlice {
+  /** Get final merged order state (all layers combined) */
   getDerivedValues: () => OrderStateData;
+  /** Check if form is valid (no errors in any validation slice) */
+  isFormValid: () => boolean;
+  /** Check if user has made any edits */
+  isDirty: () => boolean;
+}
 
-  // Validation & Async State
+/**
+ * Validation Slice - Field and form validation state.
+ */
+export interface ValidationSlice {
   /** Client-side validation errors (Valibot) */
   errors: Record<string, string>;
   /** Advisory warnings (non-blocking) */
@@ -130,13 +138,6 @@ export interface ComputedSlice {
   /** Validation request tracking (prevents race conditions) */
   validationRequestIds: Record<string, number>;
 
-  // Flags
-  /** Check if form is valid (no errors) */
-  isFormValid: () => boolean;
-  /** Check if user has made any edits */
-  isDirty: () => boolean;
-
-  // Actions
   /** Validate a single field (called on user input, debounced) */
   validateField: <K extends keyof OrderStateData>(
     field: K,
@@ -146,11 +147,25 @@ export interface ComputedSlice {
   validateRefData: () => void;
   /** Set global error message */
   setGlobalError: (error: string | null) => void;
+  /** Clear all validation state */
+  clearValidationState: () => void;
+}
+
+/**
+ * Submission Slice - Order submission and amendment.
+ */
+export interface SubmissionSlice {
   /** Submit the order (final validation + API call) */
   submitOrder: () => Promise<void>;
   /** Enter amend mode (make submitted order editable again) */
   amendOrder: () => void;
 }
+
+/**
+ * @deprecated Use DerivedSlice, ValidationSlice, and SubmissionSlice instead.
+ * Kept for backward compatibility during migration.
+ */
+export type ComputedSlice = DerivedSlice & ValidationSlice & SubmissionSlice;
 
 /**
  * Price Slice - Current market prices.
@@ -167,11 +182,21 @@ export interface PriceSlice {
 /**
  * Combined Store Type - All slices merged together.
  * This is the type of the final Zustand store.
+ *
+ * Priority-based layers for form state:
+ * 1. DefaultsSlice (Priority 1 - lowest)
+ * 2. UserPrefsSlice (Priority 2)
+ * 3. Fdc3IntentSlice (Priority 3)
+ * 4. UserInteractionSlice (Priority 4 - highest)
  */
 export type BoundState = AppSlice &
   RefDataSlice &
-  InitialOrderSlice &
+  DefaultsSlice &
+  UserPrefsSlice &
+  Fdc3IntentSlice &
   UserInteractionSlice &
-  ComputedSlice &
+  DerivedSlice &
+  ValidationSlice &
+  SubmissionSlice &
   PriceSlice &
   FieldOrderSlice;

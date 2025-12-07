@@ -79,7 +79,7 @@ const mockFdc3: Fdc3Api = {
         customData: {
           amount: 2500000,
           side: "SELL",
-          type: "LIMIT",
+          type: "TAKE_PROFIT",
           limitPrice: 1.245,
         },
       });

@@ -7,7 +7,7 @@
  * Example Flow:
  * 1. User clicks "Trade" in Bloomberg terminal
  * 2. Bloomberg broadcasts FDC3 "OrderEntry" intent with context:
- *    { ticker: "GBP/USD", amount: 2500000, side: "SELL" }
+ *    { ticker: "GBP/USD", amount: 2500000, side: "SELL", type: "TAKE_PROFIT" }
  * 3. Our app receives intent → intentMapper converts to OrderStateData
  * 4. Store updates baseValues with mapped data
  * 5. Form pre-populates with values
@@ -20,7 +20,7 @@
  * Used by: useAppInit to process FDC3 contexts.
  */
 
-import { Direction, OrderStateData, OrderType } from "../../types/domain";
+import { OrderSide, OrderStateData, OrderType } from "../../types/domain";
 
 /**
  * FDC3 context shape (subset of spec).
@@ -31,11 +31,14 @@ interface Fdc3Context {
   id?: { ticker?: string };
   /** Custom data (app-specific, not part of FDC3 standard) */
   customData?: {
-    amount?: number | string; // Notional amount
+    amount?: number | string; // Amount value
+    ccy?: string; // Currency for amount
     side?: string; // BUY or SELL
-    type?: string; // Order type (LIMIT, MARKET, etc.)
-    limitPrice?: number | string; // Limit price
+    type?: string; // Order type (uses OrderType values like TAKE_PROFIT, FLOAT, etc.)
+    level?: number | string; // Price level
     orderId?: string; // For amending existing orders
+    accountName?: string; // Account name
+    accountSdsId?: number; // Account sdsId
   };
 }
 
@@ -48,45 +51,57 @@ interface Fdc3Context {
  * @example
  * const context = {
  *   id: { ticker: "GBP/USD" },
- *   customData: { amount: 2500000, side: "SELL" }
+ *   customData: { amount: 2500000, ccy: "GBP", side: "SELL", type: "TAKE_PROFIT" }
  * };
  * const partial = mapContextToOrder(context);
- * // Result: { symbol: "GBPUSD", notional: 2500000, direction: "SELL" }
+ * // Result: { currencyPair: "GBPUSD", amount: { amount: 2500000, ccy: "GBP" }, side: "SELL" }
  */
 export const mapContextToOrder = (context: unknown): Partial<OrderStateData> => {
   const ctx = context as Fdc3Context;
   const partial: Partial<OrderStateData> = {};
 
-  // Map symbol (remove slash if present: "GBP/USD" → "GBPUSD")
+  // Map currencyPair (remove slash if present: "GBP/USD" → "GBPUSD")
   if (ctx.id && ctx.id.ticker) {
-    partial.symbol = ctx.id.ticker.replace(/\//g, "");
+    partial.currencyPair = ctx.id.ticker.replace(/\//g, "");
   }
 
   // Map custom data (app-specific fields)
   if (ctx.customData) {
-    // Notional amount (ensure numeric)
+    // Amount (ensure numeric) with currency
     if (ctx.customData.amount) {
-      partial.notional = Number(ctx.customData.amount);
+      const ccy = ctx.customData.ccy || "USD"; // Default to USD if not provided
+      partial.amount = {
+        amount: Number(ctx.customData.amount),
+        ccy,
+      };
     }
 
-    // Direction (BUY or SELL)
+    // Side (BUY or SELL)
     if (ctx.customData.side) {
-      partial.direction = ctx.customData.side as Direction;
+      partial.side = ctx.customData.side as OrderSide;
     }
 
-    // Order type (LIMIT, MARKET, etc.)
+    // Order type (uses OrderType enum values)
     if (ctx.customData.type) {
       partial.orderType = ctx.customData.type as OrderType;
     }
 
-    // Limit price (ensure numeric)
-    if (ctx.customData.limitPrice) {
-      partial.limitPrice = Number(ctx.customData.limitPrice);
+    // Level/price (ensure numeric)
+    if (ctx.customData.level) {
+      partial.level = Number(ctx.customData.level);
     }
 
     // Order ID (for amending existing orders)
     if (ctx.customData.orderId) {
       partial.orderId = ctx.customData.orderId;
+    }
+
+    // Account (complex type)
+    if (ctx.customData.accountName) {
+      partial.account = {
+        name: ctx.customData.accountName,
+        sdsId: ctx.customData.accountSdsId || 0,
+      };
     }
   }
 

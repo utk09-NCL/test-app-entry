@@ -12,6 +12,8 @@
  * is data, not hard-coded JSX.
  *
  * Used by: OrderForm to dynamically render fields for the selected order type.
+ *
+ * Field names use server-aligned naming (currencyPair, side, amount, level).
  */
 
 import { OrderStateData, OrderType } from "../types/domain";
@@ -22,17 +24,24 @@ import { OrderStateData, OrderType } from "../types/domain";
 export interface OrderConfig {
   /** Array of field keys to display (in order) */
   fields: (keyof OrderStateData)[];
-  /** Fields to display in view/amend mode (includes status) */
-  viewFields: (keyof OrderStateData)[];
   /** Which field should receive focus when this order type is selected */
   initialFocus: keyof OrderStateData;
   /**
    * Fields that can be edited after order submission (via double-click in read-only mode).
-   * Typically includes: notional, price, time in force
-   * Excludes: direction, liquidity pool (can't change after submission)
+   * Typically includes: amount, level
+   * Excludes: side, liquidity pool (can't change after submission)
    */
   editableFields: (keyof OrderStateData)[];
 }
+
+/**
+ * Get view fields for an order type (includes execution at the beginning).
+ * View fields are shown in view/amend mode.
+ */
+export const getViewFields = (orderType: OrderType): (keyof OrderStateData)[] => {
+  const config = ORDER_TYPES[orderType];
+  return ["execution", ...config.fields];
+};
 
 /**
  * Configuration for all order types.
@@ -40,64 +49,205 @@ export interface OrderConfig {
  * Value = configuration object
  */
 export const ORDER_TYPES: Record<OrderType, OrderConfig> = {
-  /** Market Order - immediate execution at current market price */
-  MARKET: {
-    fields: ["direction", "liquidityPool", "notional", "timeInForce", "account"],
-    viewFields: ["status", "direction", "liquidityPool", "notional", "timeInForce", "account"],
-    initialFocus: "notional", // Most important field for market orders
-    editableFields: ["notional", "timeInForce"], // Can only change amount and duration
+  /** POUNCE - executes at specified level */
+  [OrderType.POUNCE]: {
+    fields: ["side", "liquidityPool", "amount", "level", "expiry", "account"],
+    initialFocus: "level",
+    editableFields: ["amount", "level", "expiry"],
   },
-  /** Limit Order - executes at specified price or better */
-  LIMIT: {
-    fields: ["direction", "liquidityPool", "notional", "limitPrice", "timeInForce", "account"],
-    viewFields: [
-      "status",
-      "direction",
+  /** TAKE_PROFIT - closes position when price reaches target */
+  [OrderType.TAKE_PROFIT]: {
+    fields: [
+      "side",
       "liquidityPool",
-      "notional",
-      "limitPrice",
-      "timeInForce",
+      "amount",
+      "level",
+      "iceberg",
+      "startMode",
+      "timeZone",
+      "startTime",
+      "startDate",
+      "expiry",
+      "expiryTimeZone",
+      "expiryTime",
+      "expiryDate",
       "account",
     ],
-    initialFocus: "limitPrice", // Traders typically enter price first
-    editableFields: ["notional", "limitPrice", "timeInForce"],
+    initialFocus: "level",
+    editableFields: [
+      "amount",
+      "level",
+      "iceberg",
+      "startMode",
+      "timeZone",
+      "startTime",
+      "startDate",
+      "expiry",
+      "expiryTimeZone",
+      "expiryTime",
+      "expiryDate",
+    ],
   },
-  /** Take Profit - closes position when price reaches target */
-  TAKE_PROFIT: {
-    fields: ["direction", "liquidityPool", "notional", "limitPrice", "timeInForce", "account"],
-    viewFields: [
-      "status",
-      "direction",
+
+  /** STOP_LOSS - closes position to limit losses */
+  [OrderType.STOP_LOSS]: {
+    fields: [
+      "side",
       "liquidityPool",
-      "notional",
-      "limitPrice",
-      "timeInForce",
+      "amount",
+      "level",
+      "triggerSide",
+      "startMode",
+      "timeZone",
+      "startTime",
+      "startDate",
+      "expiry",
+      "expiryTimeZone",
+      "expiryTime",
+      "expiryDate",
       "account",
     ],
-    initialFocus: "limitPrice",
-    editableFields: ["notional", "limitPrice", "timeInForce"],
+    initialFocus: "level",
+    editableFields: [
+      "amount",
+      "level",
+      "triggerSide",
+      "startMode",
+      "timeZone",
+      "startTime",
+      "startDate",
+      "expiry",
+      "expiryTimeZone",
+      "expiryTime",
+      "expiryDate",
+    ],
   },
-  /** Stop Loss - closes position to limit losses */
-  STOP_LOSS: {
-    fields: ["direction", "liquidityPool", "notional", "stopPrice", "timeInForce", "account"],
-    viewFields: [
-      "status",
-      "direction",
+
+  /** FLOAT - with Start scheduling */
+  [OrderType.FLOAT]: {
+    fields: [
+      "side",
       "liquidityPool",
-      "notional",
-      "stopPrice",
-      "timeInForce",
+      "targetExecutionRate",
+      "level",
+      "amount",
+      "startMode",
+      "timeZone",
+      "startTime",
+      "startDate",
+      "expiry",
+      "expiryTimeZone",
+      "expiryTime",
+      "expiryDate",
       "account",
     ],
-    initialFocus: "stopPrice", // Stop price is the key field
-    editableFields: ["notional", "stopPrice", "timeInForce"],
+    initialFocus: "amount",
+    editableFields: [
+      "targetExecutionRate",
+      "amount",
+      "level",
+      "startMode",
+      "timeZone",
+      "startTime",
+      "startDate",
+      "expiry",
+      "expiryTimeZone",
+      "expiryTime",
+      "expiryDate",
+    ],
   },
-  /** Float Order - special order type with optional limit price and auto-grab feature */
-  FLOAT: {
-    fields: ["direction", "notional", "limitPrice", "account"],
-    viewFields: ["status", "direction", "notional", "limitPrice", "account"],
-    // Note: No liquidityPool for FLOAT orders
-    initialFocus: "notional",
-    editableFields: ["notional", "limitPrice"], // No timeInForce for FLOAT
+
+  /** LIQUIDITY_SEEKER - with Start scheduling */
+  [OrderType.LIQUIDITY_SEEKER]: {
+    fields: [
+      "side",
+      "liquidityPool",
+      "amount",
+      "startMode",
+      "timeZone",
+      "startTime",
+      "startDate",
+      "expiry",
+      "expiryTimeZone",
+      "expiryTime",
+      "expiryDate",
+      "account",
+    ],
+    initialFocus: "amount",
+    editableFields: [
+      "amount",
+      "startMode",
+      "timeZone",
+      "startTime",
+      "startDate",
+      "expiry",
+      "expiryTimeZone",
+      "expiryTime",
+      "expiryDate",
+    ],
+  },
+  /** PARTICIPATION - participates in market movement */
+  [OrderType.PARTICIPATION]: {
+    fields: [
+      "side",
+      "liquidityPool",
+      "amount",
+      "participationRate",
+      "executionStyle",
+      "expiry",
+      "account",
+    ],
+    initialFocus: "participationRate",
+    editableFields: ["amount", "participationRate", "expiry"],
+  },
+  /** TWAP - Time-Weighted Average Price execution */
+  [OrderType.TWAP]: {
+    fields: ["side", "liquidityPool", "amount", "twapTargetEndTime", "timeZone", "account"],
+    initialFocus: "twapTargetEndTime",
+    editableFields: ["amount", "twapTargetEndTime"],
+  },
+  /** FIXING - executes at fixing price */
+  [OrderType.FIXING]: {
+    fields: ["side", "liquidityPool", "amount", "fixingId", "fixingDate", "account"],
+    initialFocus: "fixingId",
+    editableFields: ["amount"],
+  },
+  /** AGGRESSIVE - aggressive execution strategy */
+  [OrderType.AGGRESSIVE]: {
+    fields: [
+      "side",
+      "liquidityPool",
+      "amount",
+      "executionStyle",
+      "discretionFactor",
+      "expiry",
+      "account",
+    ],
+    initialFocus: "amount",
+    editableFields: ["amount", "expiry"],
+  },
+  /** IOC - Immediate Or Cancel execution */
+  [OrderType.IOC]: {
+    fields: ["side", "liquidityPool", "amount", "account"],
+    initialFocus: "amount",
+    editableFields: ["amount"],
+  },
+  /** ADAPT - adapts to market conditions */
+  [OrderType.ADAPT]: {
+    fields: ["side", "liquidityPool", "amount", "skew", "franchiseExposure", "expiry", "account"],
+    initialFocus: "amount",
+    editableFields: ["amount", "skew", "expiry"],
+  },
+  /** CALL_LEVEL - executes at call level */
+  [OrderType.CALL_LEVEL]: {
+    fields: ["side", "liquidityPool", "amount", "level", "account"],
+    initialFocus: "level",
+    editableFields: ["amount", "level"],
+  },
+  /** PEG - pegged order type */
+  [OrderType.PEG]: {
+    fields: ["side", "liquidityPool", "amount", "discretionFactor", "expiry", "account"],
+    initialFocus: "amount",
+    editableFields: ["amount", "discretionFactor", "expiry"],
   },
 };

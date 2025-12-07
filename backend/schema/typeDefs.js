@@ -5,11 +5,19 @@ export const typeDefs = `#graphql
     HARD
   }
   enum OrderType {
-    LIMIT
-    MARKET
+    ADAPT
+    AGGRESSIVE
+    CALL_LEVEL
+    FIXING
+    FLOAT
+    IOC
+    LIQUIDITY_SEEKER
+    PARTICIPATION
+    PEG
+    POUNCE
     STOP_LOSS
     TAKE_PROFIT
-    FLOAT
+    TWAP
   }
 
   enum OrderSide {
@@ -18,12 +26,23 @@ export const typeDefs = `#graphql
   }
 
   enum OrderStatus {
-    PENDING
-    WORKING
-    FILLED
-    PARTIALLY_FILLED
     CANCELLED
+    EXPIRED
+    FILLED
+    LIVE
+    LIVE_DELAYED
+    LIVE_SUSPENDED
+    LOADING
+    PENDING_AMEND
+    PENDING_CANCEL
+    PENDING_EXPIRY
+    PENDING_FILL
+    PENDING_LIVE
+    PENDING_MOVE_TO_MANUAL
+    PENDING_RESUME
+    PENDING_SUSPEND
     REJECTED
+    UNSPECIFIED
   }
 
   enum TimeInForce {
@@ -31,6 +50,89 @@ export const typeDefs = `#graphql
     GTD
     IOC
     FOK
+  }
+
+  enum ExpiryStrategy {
+    GTC
+    GTD
+    GTT
+  }
+
+  enum DelayBehaviour {
+    CONSTANT
+    SPEED_UP_CANCEL
+    SPEED_UP_EXTEND
+  }
+
+  enum DiscretionFactor {
+    AGGRESSIVE
+    NEUTRAL
+    PASSIVE
+  }
+
+  enum ExecutionStyle {
+    EXECUTION_STYLE_AGGRESSIVE
+    EXECUTION_STYLE_INVALID
+    EXECUTION_STYLE_NEUTRAL
+    EXECUTION_STYLE_PASSIVE
+  }
+
+  enum ExecutionAgent {
+    EXECUTION_AGENT_AUTO
+    EXECUTION_AGENT_BENCHMARK
+    EXECUTION_AGENT_INVALID
+    EXECUTION_AGENT_MANUAL
+  }
+
+  enum FranchiseExposure {
+    FRANCHISE_EXPOSURE_FAST
+    FRANCHISE_EXPOSURE_INVALID
+    FRANCHISE_EXPOSURE_MEDIUM
+    FRANCHISE_EXPOSURE_MEDIUM_MINUS
+    FRANCHISE_EXPOSURE_MEDIUM_PLUS
+    FRANCHISE_EXPOSURE_SLOW
+  }
+
+  enum TargetExecutionRate {
+    TARGET_EXECUTION_RATE_FAST
+    TARGET_EXECUTION_RATE_INVALID
+    TARGET_EXECUTION_RATE_MEDIUM
+    TARGET_EXECUTION_RATE_MEDIUM_MINUS
+    TARGET_EXECUTION_RATE_MEDIUM_PLUS
+    TARGET_EXECUTION_RATE_SLOW
+  }
+
+  enum ParticipationRate {
+    PARTICIPATION_RATE_FAST
+    PARTICIPATION_RATE_INVALID
+    PARTICIPATION_RATE_MEDIUM
+    PARTICIPATION_RATE_MEDIUM_MINUS
+    PARTICIPATION_RATE_MEDIUM_PLUS
+    PARTICIPATION_RATE_SLOW
+  }
+
+  enum Skew {
+    SKEW_HIGH
+    SKEW_INVALID
+    SKEW_LOW
+    SKEW_MEDIUM
+    SKEW_NONE
+  }
+
+  enum StopLossTriggerSide {
+    INVALID
+    LEADING
+    MID
+    SL
+    SL_B
+    SL_S
+    SL_OT
+    TRAILING
+  }
+
+  enum RateType {
+    VWAP
+    WORST
   }
   # Validation Types
   type FieldValidation {
@@ -128,8 +230,8 @@ export const typeDefs = `#graphql
   }
 
   type Expiry {
-    strategy: String!
-    endTime: String
+    strategy: ExpiryStrategy!
+    endTime: Float
     endTimeZone: String
   }
 
@@ -143,29 +245,29 @@ export const typeDefs = `#graphql
     side: OrderSide!
     orderType: OrderType!
     account: AccountDetail!
-    triggerSide: OrderSide
+    triggerSide: StopLossTriggerSide
     liquidityPool: String!
-    targetExecutionRate: Float
-    participationRate: Float
-    executionStyle: String
-    discretionFactor: Float
-    delayBehaviour: String
+    targetExecutionRate: TargetExecutionRate
+    participationRate: ParticipationRate
+    executionStyle: ExecutionStyle
+    discretionFactor: DiscretionFactor
+    delayBehaviour: DelayBehaviour
     twapTargetEndTime: String
     twapTimeZone: String
     timeZone: String
     startTime: String
-    skew: Float
-    franchiseExposure: Float
+    skew: Skew
+    franchiseExposure: FranchiseExposure
     expiry: Expiry
   }
 
   type Execution {
-    agent: String!
+    agent: ExecutionAgent!
     averageFillRate: Float!
     filled: Amount!
     rejectReason: String
     status: OrderStatus!
-    targetEndTime: String
+    targetEndTime: Float
   }
 
   type OrderData {
@@ -228,7 +330,7 @@ export const typeDefs = `#graphql
     liquidityPool: String!
     account: String!
     timeInForce: TimeInForce
-    startTime: String
+    startTime: Float
     fixingId: ID
   }
 
@@ -265,6 +367,7 @@ export const typeDefs = `#graphql
     currencyPairs(orderType: OrderType): [CurrencyPair!]!
     orderTypesWithPools: [OrderTypeWithPools!]!
     currencyPair(currencyPairId: ID!): CurrencyPairDetail!
+    validateField(input: ValidateFieldInput!): FieldValidation!
   }
 
   # Mutations
@@ -285,6 +388,5 @@ export const typeDefs = `#graphql
     orderFailure(orderId: ID!): OrderFailure!
     gatorData(subscription: GatorSubscription): GatorData!
     globalUserPreferencesStream: GlobalUserPreferences!
-    validateField(input: ValidateFieldInput!): FieldValidation!
   }
 `;

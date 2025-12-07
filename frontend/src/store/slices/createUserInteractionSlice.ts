@@ -3,13 +3,24 @@
  *
  * This slice tracks everything the user has done to the form:
  * - dirtyValues: Fields the user has edited (overlay on baseValues)
- * - touchedFields: Fields the user has interacted with (for error display)
  * - setFieldValue: Updates a field (called by FieldController)
  * - resetFormInteractions: Clears all edits (for "New Order" flow)
  *
- * Why "dirty" values?\n * Term from form libraries (Formik, React Hook Form) meaning "user-modified".\n * - Clean state: baseValues (defaults)\n * - Dirty state: dirtyValues (user changes)\n * - Final state: { ...baseValues, ...dirtyValues }\n *
- * Field Update Flow:\n * 1. User types in Input → onChange fires\n * 2. FieldController calls setFieldValue(field, value)\n * 3. dirtyValues[field] = value, touchedFields[field] = true\n * 4. Errors cleared for that field (validation will rerun)\n * 5. getDerivedValues() returns merged state\n *
- * Used by: FieldController (updates), OrderForm (reads merged values).\n */
+ * Why "dirty" values?
+ * Term from form libraries (Formik, React Hook Form) meaning "user-modified".
+ * - Clean state: baseValues (defaults)
+ * - Dirty state: dirtyValues (user changes)
+ * - Final state: { ...baseValues, ...dirtyValues }
+ *
+ * Field Update Flow:
+ * 1. User types in Input → onChange fires
+ * 2. FieldController calls setFieldValue(field, value)
+ * 3. dirtyValues[field] = value
+ * 4. Errors cleared for that field (validation will rerun)
+ * 5. getDerivedValues() returns merged state
+ *
+ * Used by: FieldController (updates), OrderForm (reads merged values).
+ */
 
 import { StateCreator } from "zustand";
 
@@ -29,19 +40,10 @@ export const createUserInteractionSlice: StateCreator<
   dirtyValues: {},
 
   /**
-   * Fields the user has interacted with (focused/blurred).
-   * Used to determine when to show validation errors:
-   * - Don't show errors on pristine fields (not touched)
-   * - Show errors after user leaves field (on blur)
-   */
-  touchedFields: {},
-
-  /**
    * Update a single field value.
    * Called by FieldController on every user input (debounced for validation).
    *
    * Side effects:
-   * - Marks field as touched
    * - Clears existing errors (validation will rerun)
    * - Clears server errors (may be stale after edit)
    */
@@ -49,7 +51,6 @@ export const createUserInteractionSlice: StateCreator<
     set((state) => {
       // Update dirty values with type-safe assignment
       (state.dirtyValues as Record<K, OrderStateData[K] | undefined>)[field] = value;
-      state.touchedFields[field] = true;
 
       // Clear errors for this field (user is actively fixing it)
       if (state.errors[field]) delete state.errors[field];
@@ -60,7 +61,6 @@ export const createUserInteractionSlice: StateCreator<
    * Reset all user interactions (for "New Order" flow).
    * Clears:
    * - dirtyValues: User edits
-   * - touchedFields: Interaction tracking
    * - errors/warnings: Validation state
    *
    * baseValues remain intact (defaults are preserved).
@@ -68,7 +68,6 @@ export const createUserInteractionSlice: StateCreator<
   resetFormInteractions: () =>
     set((state) => {
       state.dirtyValues = {};
-      state.touchedFields = {};
       state.errors = {};
       state.serverErrors = {};
       state.warnings = {};

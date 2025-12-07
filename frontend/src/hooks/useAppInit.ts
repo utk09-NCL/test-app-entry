@@ -9,10 +9,14 @@
  * 3. Set up FDC3 intent listeners for external context linking (e.g., from another app)
  * 4. Transition app status from "INITIALIZING" to "READY"
  *
- * Layered State Pattern:
- * - When FDC3 intent arrives, it updates baseValues (Layer 1)
- * - User interactions are stored separately in dirtyValues (Layer 2)
- * - FDC3 intents always override user changes by resetting interactions
+ * Priority-Based Layered State:
+ * - Defaults (Priority 1): Hardcoded in DefaultsSlice
+ * - User Prefs (Priority 2): Stored in UserPrefsSlice
+ * - FDC3 Intent (Priority 3): Stored in Fdc3IntentSlice
+ * - User Input (Priority 4): Stored in UserInteractionSlice
+ *
+ * The ComputedSlice merges these layers to produce final form values.
+ * FDC3 intents can arrive at any time and will be handled correctly.
  *
  * GraphQL Integration:
  * - Uses Apollo Client hooks (useQuery, useSubscription) to fetch data
@@ -50,10 +54,16 @@ export const useAppInit = () => {
   // Extract actions from store (these don't change, so safe to extract)
   const setStatus = useOrderEntryStore((s) => s.setStatus);
   const setRefData = useOrderEntryStore((s) => s.setRefData);
-  const setBaseValues = useOrderEntryStore((s) => s.setBaseValues);
-  const resetInteractions = useOrderEntryStore((s) => s.resetFormInteractions);
   const validateRefData = useOrderEntryStore((s) => s.validateRefData);
   const initFieldOrderFromStorage = useOrderEntryStore((s) => s.initFieldOrderFromStorage);
+
+  // New layered state actions
+  const setUserPrefs = useOrderEntryStore((s) => s.setUserPrefs);
+  const setFdc3Intent = useOrderEntryStore((s) => s.setFdc3Intent);
+  const queueFdc3Intent = useOrderEntryStore((s) => s.queueFdc3Intent);
+  const processIntentQueue = useOrderEntryStore((s) => s.processIntentQueue);
+  const isDirty = useOrderEntryStore((s) => s.isDirty);
+  const setPendingFdc3Intent = useOrderEntryStore((s) => s.setPendingFdc3Intent);
 
   // Query 1: Fetch all accounts
   // Used to populate account dropdown
@@ -166,6 +176,9 @@ export const useAppInit = () => {
 
     // Mark app as ready (hides loading screen, shows form)
     setStatus("READY");
+
+    // Process any FDC3 intents that arrived before app was ready
+    processIntentQueue();
   }, [
     accountsData,
     accountsLoading,
@@ -179,6 +192,7 @@ export const useAppInit = () => {
     setRefData,
     setStatus,
     validateRefData,
+    processIntentQueue,
   ]);
 
   // Effect 2: Apply user preferences when available
@@ -188,39 +202,57 @@ export const useAppInit = () => {
     const defaultAccount = userPrefsData.globalUserPreferencesStream.defaultGlobalAccount;
 
     if (defaultAccount) {
-      // Update base values with preferred account
-      // This overrides the default 0th index account selection
-      setBaseValues({
-        account: defaultAccount.sdsId.toString(),
+      // Store user preference in dedicated slice (Priority 2)
+      setUserPrefs({
+        defaultAccount: defaultAccount.sdsId.toString(),
       });
 
       // Validate that the default account exists in accounts list
       validateRefData();
     }
-  }, [userPrefsData, setBaseValues, validateRefData]);
+  }, [userPrefsData, setUserPrefs, validateRefData]);
 
-  // Effect 3: Initialize FDC3 Service (Phase 6)
+  // Effect 3: Initialize FDC3 Service
   useEffect(() => {
+    // Get current app status to determine if we should queue or apply intents
+    const getAppStatus = () => useOrderEntryStore.getState().status;
+
     // FDC3 allows other apps to send trade data to this app
     // Example: User clicks "Trade" on a chart app → this app receives symbol/amount
     Fdc3Service.getInstance().initialize((ctx) => {
       // Convert FDC3 context (external format) to our internal Order format
       const mapped = mapContextToOrder(ctx);
 
-      // Update base values with FDC3 data
-      setBaseValues(mapped);
+      const appStatus = getAppStatus();
+      const formIsDirty = isDirty();
 
-      // CRITICAL: Reset user interactions when FDC3 intent arrives
-      // This ensures external intents always take precedence over manual edits
-      resetInteractions();
+      if (appStatus !== "READY") {
+        // App not ready yet - queue the intent for later
+        queueFdc3Intent(mapped);
+        console.log("[useAppInit] FDC3 intent queued (app not ready):", ctx);
+        return;
+      }
+
+      if (formIsDirty) {
+        // User has unsaved changes - show confirmation dialog
+        setPendingFdc3Intent(mapped);
+        console.log(
+          "[useAppInit] FDC3 intent pending confirmation (user has unsaved changes):",
+          ctx
+        );
+        return;
+      }
+
+      // App is ready and no unsaved changes - apply immediately
+      setFdc3Intent(mapped);
 
       // Validate reference data after FDC3 intent
       // Check if intent references unavailable accounts/orderTypes/symbols/pools
       validateRefData();
 
-      console.log("[useAppInit] FDC3 intent received and applied:", ctx);
+      console.log("[useAppInit] FDC3 intent applied:", ctx);
     });
-  }, [setBaseValues, resetInteractions, validateRefData]);
+  }, [setFdc3Intent, queueFdc3Intent, setPendingFdc3Intent, validateRefData, isDirty]);
 
   // Effect 4: Initialize field order preferences from localStorage
   useEffect(() => {

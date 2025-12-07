@@ -49,7 +49,6 @@
   font-size: 0.75rem;
   margin-top: $oe-spacing-xs;
   padding-left: 0;
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 .warning {
@@ -64,16 +63,4 @@
 
 .spacer {
   display: none;
-}
-
-@keyframes pulse {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.5;
-  }
 }

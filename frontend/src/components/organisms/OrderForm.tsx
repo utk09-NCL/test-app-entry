@@ -6,8 +6,8 @@
  *
  * Key Concepts:
  * - Uses ORDER_TYPES config to determine which fields to show
- * - Each order type (MARKET, LIMIT, FLOAT, etc.) has its own field list
- * - Fields are rendered by FieldController, which maps field names to components
+ * - Each order type (e.g., FLOAT, LIQUIDITY_SEEKER, TAKE_PROFIT) has its own field list
+ * - Fields are rendered by FieldRenderer, which maps field names to components
  * - Form adapts to editMode: "creating", "viewing", or "amending"
  * - Supports drag-and-drop field reordering (when reorder mode enabled)
  *
@@ -24,7 +24,7 @@
  * - Ensures single source of truth (fixes state sync issues)
  *
  * @see ORDER_TYPES in config/orderConfig.ts for field configurations
- * @see FieldController for individual field rendering logic
+ * @see FieldRenderer for individual field rendering logic
  * @see useFieldOrder for custom field order management
  */
 
@@ -39,7 +39,7 @@ import { ReorderableFieldList } from "../molecules/ReorderableFieldList";
 import { ReorderModeBanner } from "../molecules/ReorderModeBanner";
 import { RowComponent } from "../molecules/RowComponent";
 
-import { FieldController } from "./FieldController";
+import { FieldRenderer } from "./FieldRenderer";
 import { OrderFooter } from "./OrderFooter";
 
 import styles from "./OrderForm.module.scss";
@@ -66,7 +66,8 @@ export const OrderForm = () => {
   const isReadOnly = editMode === "viewing" || editMode === "amending";
 
   // Look up configuration for the current order type
-  // Each config contains: fields[], viewFields[], editableFields[], initialFocus
+  // Each config contains: fields[], editableFields[], initialFocus
+  // viewFields is derived dynamically via getViewFields()
   const config = ORDER_TYPES[orderType as keyof typeof ORDER_TYPES];
 
   /**
@@ -76,7 +77,7 @@ export const OrderForm = () => {
    */
   const renderField = useCallback(
     (fieldKey: keyof OrderStateData, index: number) => (
-      <FieldController key={fieldKey} fieldKey={fieldKey} rowIndex={index} />
+      <FieldRenderer key={fieldKey} fieldKey={fieldKey} rowIndex={index} />
     ),
     []
   );

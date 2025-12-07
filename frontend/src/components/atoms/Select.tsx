@@ -32,8 +32,8 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
  *   value={orderType}
  *   onChange={(e) => setOrderType(e.target.value)}
  *   options={[
- *     { label: "Market", value: "MARKET" },
- *     { label: "Limit", value: "LIMIT" }
+ *     { label: "Float", value: "FLOAT" },
+ *     { label: "Liquidity Seeker", value: "LIQUIDITY_SEEKER" }
  *   ]}
  * />
  * ```

@@ -138,8 +138,8 @@
         },
         {
           id: "m-createOrder",
-          label: "Create Order (LIMIT)",
-          query: `mutation CreateOrder {\n  createOrder(orderEntry: {\n    currencyPair: "EURUSD"\n    side: BUY\n    orderType: LIMIT\n    amount: 1000000\n    ccy: "USD"\n    limitPrice: 1.1\n    liquidityPool: "GATOR_POOL_1"\n    account: "1"\n    timeInForce: GTC\n  }) {\n    orderId\n    result\n    failureReason\n  }\n}`,
+          label: "Create Order (TAKE_PROFIT)",
+          query: `mutation CreateOrder {\n  createOrder(orderEntry: {\n    currencyPair: "EURUSD"\n    side: BUY\n    orderType: TAKE_PROFIT\n    amount: 1000000\n    ccy: "USD"\n    limitPrice: 1.1\n    liquidityPool: "GATOR_POOL_1"\n    account: "1"\n    timeInForce: GTC\n  }) {\n    orderId\n    result\n    failureReason\n  }\n}`,
         },
         {
           id: "s-gatorData",

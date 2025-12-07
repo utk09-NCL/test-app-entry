@@ -25,6 +25,7 @@
 import { ApolloProvider } from "@apollo/client";
 
 import { Spinner } from "./components/atoms/Spinner";
+import { Fdc3ConfirmDialog } from "./components/organisms/Fdc3ConfirmDialog";
 import { OrderForm } from "./components/organisms/OrderForm";
 import { OrderHeader } from "./components/organisms/OrderHeader";
 import { MainLayout } from "./components/templates/MainLayout";
@@ -68,12 +69,14 @@ function App() {
   // OrderHeader: Currency pair selection and live price display
   // OrderForm: Dynamic form that changes based on selected order type
   // OrderFooter: Action buttons (rendered inside OrderForm component)
+  // Fdc3ConfirmDialog: Modal shown when FDC3 intent arrives with unsaved changes
   return (
     <MainLayout>
       <OrderHeader />
       <div data-testid="order-form-entry">
         <OrderForm />
       </div>
+      <Fdc3ConfirmDialog />
     </MainLayout>
   );
 }

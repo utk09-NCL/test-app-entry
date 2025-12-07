@@ -36,7 +36,8 @@
     "src/**/*.jsx",
     "./src/typings.d.ts",
     "index.tsx",
-    "declaration.d.ts"
+    "declaration.d.ts",
+    "vitest.setup.ts"
   ],
   "exclude": ["node_modules", "build", "dist", "eslint.config.js", "vite.config.ts"]
 }

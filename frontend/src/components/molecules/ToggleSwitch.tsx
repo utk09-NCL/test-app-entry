@@ -49,10 +49,12 @@ export const ToggleSwitch = ({
   id,
   disabled,
 }: ToggleProps) => {
+  const resolvedTestId = testId ?? "toggle-switch";
+
   return (
     <div
       className={styles.container}
-      data-testid={testId}
+      data-testid={resolvedTestId}
       role="group" // ARIA role for grouped buttons
       id={id}
       aria-labelledby={id ? `label-for-${id}` : undefined} // Link to label for accessibility
@@ -63,9 +65,11 @@ export const ToggleSwitch = ({
           <button
             key={opt.value}
             type="button" // Prevent form submission
-            data-testid={`${testId}-option-${opt.value}`}
+            data-testid={`${resolvedTestId}-option-${opt.value}`}
             onClick={() => !disabled && onChange(opt.value)}
             disabled={disabled}
+            data-appstate={isActive ? "active" : "inactive"}
+            data-variant={opt.variant}
             // Apply base, active, and variant styles
             className={`${styles.button} ${isActive ? styles.active : ""} ${
               isActive && opt.variant ? styles[opt.variant] : ""
