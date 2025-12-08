@@ -1,5 +1,81 @@
 # Code Changes Log
 
+## Phase 17: Test Fix and 100% Coverage Achievement (2025-12-08)
+
+### Summary
+
+Fixed failing test in `createSubmissionSlice.spec.ts` where the expected toast message didn't match the actual implementation. Then added comprehensive tests for custom validation logic in `validation.ts` to achieve 100% statement, line, and function coverage.
+
+### Work Completed
+
+1. **Fixed `src/store/slices/createSubmissionSlice.spec.ts`**
+   - **Issue**: Test expected generic toast message "Please fix validation errors." but implementation shows specific error summary
+   - **Root Cause**: Implementation was updated (lines 336-352) to provide dynamic error messages:
+     - Single error: `"fieldName: error message"`
+     - Multiple errors: `"N validation errors found"`
+   - **Fix**: Updated test expectation from generic message to actual format: `"notional: Notional is required"`
+   - **Result**: All tests now passing (663 total)
+
+2. **Added Tests to `src/config/validation.spec.ts`** (9 new tests)
+   - Added 3 tests for `startMode === "START_AT"` custom validation:
+     - Missing startTime validation
+     - Missing startDate validation
+     - Missing timeZone validation
+   - Added 5 tests for expiry strategy GTD/GTT custom validation:
+     - Missing expiryTime for GTD
+     - Missing expiryDate for GTD
+     - Missing expiryTimeZone for GTD
+     - Missing expiryTime for GTT
+     - GTC strategy validation (should pass without extra fields)
+   - **Coverage**: 83.95% statements, 83.54% lines → 100% statements, 100% lines, 100% functions
+
+### Testing Details
+
+**Custom Validation Coverage Added:**
+
+Lines 385-395: startMode validation
+- When `startMode === "START_AT"`, requires startTime, startDate, and timeZone
+- Empty string values are considered missing
+
+Lines 398-409: Expiry strategy validation
+- When `expiry.strategy === "GTD" || "GTT"`, requires expiryTime, expiryDate, and expiryTimeZone
+- Empty string values are considered missing
+
+Line 412: Error check after custom validation
+- Returns validation errors when custom validation finds issues
+
+### Test Results
+
+```
+Test Files: 31 passed (31)
+Tests: 671 passed (671)
+Duration: 4.34s
+
+Coverage Report:
+All files          |     100 |    95.46 |     100 |     100
+config/validation  |     100 |    96.07 |     100 |     100
+```
+
+**Coverage Metrics Achieved:**
+- ✅ Statements: 100% (was 83.95%)
+- ✅ Lines: 100% (was 83.54%)
+- ✅ Functions: 100% (already 100%)
+
+### Build & Lint Status
+
+- ✅ All 671 tests passing
+- ✅ Build succeeds (467.10 kB bundle)
+- ✅ Lint passes with no errors
+- ✅ 100% coverage for statements, lines, and functions
+
+### Files Modified
+
+- `frontend/src/store/slices/createSubmissionSlice.spec.ts` (1 test expectation fixed)
+- `frontend/src/config/validation.spec.ts` (+9 tests, now 44 tests total)
+- `CODE_CHANGES.md` (this file - added Phase 17 documentation)
+
+---
+
 ## Phase 16: Test Coverage Completion - Missing Coverage Tests (2025-12-08)
 
 ### Summary

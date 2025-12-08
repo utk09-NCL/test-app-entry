@@ -1,914 +1,473 @@
-# FX Order Entry - Comprehensive Developer Guide
+# FX Order Entry - Developer Guide
 
-A deep dive into the FX Order Entry application architecture, patterns, and workflows.
+**Quick reference for the FX Order Entry frontend application. Organized by common scenarios with clear "which files to change" guidance.**
+
+---
 
 ## Table of Contents
 
-1. [Architecture Overview](#architecture-overview)
-2. [State Management Deep Dive](#state-management-deep-dive)
-3. [Form System](#form-system)
-4. [Validation System](#validation-system)
-5. [FDC3 Intent Handling](#fdc3-intent-handling)
-6. [Scenarios & Workflows](#scenarios--workflows)
-7. [Code Organization](#code-organization)
-8. [Unit Testing](#unit-testing)
+1. [Quick Reference - Common Scenarios](#quick-reference---common-scenarios)
+2. [Architecture Overview](#architecture-overview)
+3. [File Organization](#file-organization)
+4. [State Management](#state-management)
+5. [Testing Guide](#testing-guide)
+6. [Debugging Tips](#debugging-tips)
 
 ---
 
-## Architecture Overview
+## Quick Reference - Common Scenarios
 
-### High-Level Data Flow
+### Scenario 1: Add a New Field to All Order Types
 
-```txt
-User Input
-    │
-    ▼
-FieldRenderer (renders field component)
-    │
-    ├─→ useFieldValue (get/set value)
-    ├─→ useFieldState (get validation errors)
-    ├─→ useFieldOptions (get dropdown options)
-    ├─→ useFieldReadOnly (compute read-only state)
-    └─→ useFieldVisibility (check if visible)
-    │
-    ▼
-Zustand Store (global state)
-    │
-    ├─→ DerivedSlice (computed form values)
-    ├─→ ValidationSlice (validation state)
-    └─→ SubmissionSlice (order submission)
-    │
-    ▼
-GraphQL Mutations (submit order)
-```
+**Files to Change:**
 
-### Slice Dependency Graph
-
-```txt
-Priority Layers:
-┌─────────────────────────────────────────────┐
-│ DefaultsSlice (Priority 1)                  │
-│ Hardcoded default values                    │
-└─────────────────────────────────────────────┘
-                    │
-                    ▼
-┌─────────────────────────────────────────────┐
-│ UserPrefsSlice (Priority 2)                 │
-│ User preferences from server subscription   │
-└─────────────────────────────────────────────┘
-                    │
-                    ▼
-┌─────────────────────────────────────────────┐
-│ Fdc3IntentSlice (Priority 3)                │
-│ Intent data from external apps              │
-└─────────────────────────────────────────────┘
-                    │
-                    ▼
-┌─────────────────────────────────────────────┐
-│ UserInteractionSlice (Priority 4 - highest) │
-│ User manual input (form edits)              │
-└─────────────────────────────────────────────┘
-                    │
-                    ▼
-        DerivedSlice (merges all)
-                    │
-                    ▼
-        Final Form Values (OrderStateData)
-```
-
-### Why Priority Layers?
-
-**Problem:** Without priority layers, FDC3 intent data would overwrite user edits if the intent loaded after the user started typing.
-
-**Solution:** Higher-priority data (user input) always overrides lower-priority data (FDC3 intent). Loading order doesn't matter.
-
-**Example:**
-
-- User types in Symbol field → stored in UserInteractionSlice (Priority 4)
-- FDC3 intent arrives with Symbol → stored in Fdc3IntentSlice (Priority 3)
-- `getDerivedValues()` returns user's value because Priority 4 > Priority 3
-
----
-
-## State Management Deep Dive
-
-### Store Slices
-
-#### 1. AppSlice
-
-Lifecycle and UI state.
-
-```typescript
-{
-  status: "INITIALIZING" | "READY" | "SUBMITTING" | "ERROR"
-  editMode: "creating" | "viewing" | "amending"
-  currentOrderId: string | null
-  toastMessage: { type: "success" | "error"; text: string } | null
-}
-```
-
-#### 2. RefDataSlice
-
-Reference data loaded from server (dropdown options).
-
-```typescript
-{
-  accounts: Account[]
-  pools: LiquidityPool[]
-  currencyPairs: CurrencyPair[]
-  entitledOrderTypes: string[]
-  isLoadingRefData: boolean
-}
-```
-
-#### 3. DefaultsSlice (Priority 1)
-
-Hardcoded defaults - never changes.
-
-```typescript
-{
-  defaults: {
-    symbol: "GBPUSD"
-    direction: "BUY"
-    orderType: "LIMIT"
-    // ... other fields
-  }
-}
-```
-
-#### 4. UserPrefsSlice (Priority 2)
-
-User's preferred defaults from server.
-
-```typescript
-{
-  userPrefs: {
-    defaultAccount: "ACC123"
-    defaultLiquidityPool: "POOL456"
-    defaultOrderType: "LIMIT"
-    defaultTimeInForce: "GTC"
-  }
-}
-```
-
-#### 5. Fdc3IntentSlice (Priority 3)
-
-FDC3 intent data - can be accepted or rejected.
-
-```typescript
-{
-  fdc3Intent: {
-    symbol: "EURUSD"
-    direction: "SELL"
-    notional: 1000000
-    // ... other fields from intent
-  } | null
-  fdc3Metadata: {
-    intentName: "ViewInstrument"
-    timestamp: number
-  } | null
-}
-```
-
-#### 6. UserInteractionSlice (Priority 4 - Highest)
-
-User's manual form edits.
-
-```typescript
-{
-  dirtyValues: {
-    symbol: "EURUSD"
-    direction: "BUY"
-    notional: 500000
-    // ... only changed fields
-  }
-}
-```
-
-#### 7. DerivedSlice
-
-Computed values combining all layers.
-
-```typescript
-getDerivedValues(): OrderStateData {
-  // Merge: defaults + userPrefs + fdc3Intent + userInput
-  // Higher priority overrides lower priority
-}
-
-isDirty(): boolean {
-  // True if user has made any edits
-}
-
-isFormValid(): boolean {
-  // True if no errors in validation slice
-}
-```
-
-#### 8. ValidationSlice
-
-All validation state and actions.
-
-```typescript
-{
-  errors: Record<string, string>           // Sync errors
-  serverErrors: Record<string, string>     // Async errors
-  warnings: Record<string, string>         // Non-blocking hints
-  refDataErrors: Record<string, string>    // Missing accounts/pools
-  globalError: string | null
-  isValidating: Record<string, boolean>    // Loading indicators
-  validationRequestIds: Record<string, number> // Race condition tracking
-}
-```
-
-#### 9. SubmissionSlice
-
-Order submission and amendment.
-
-```typescript
-{
-  submitOrder(): Promise<void>  // Create or amend order
-  amendOrder(): void             // Enter amend mode
-}
-```
-
----
-
-## Form System
-
-### Component Hierarchy
-
-```txt
-OrderForm (container)
-├─ FieldRenderer (field 1)
-│  └─ hooks: useFieldValue, useFieldState, etc.
-│     └─ <Input> | <Select> | <Toggle> | <AmountWithCurrency> | <LimitPriceWithCheckbox>
-├─ FieldRenderer (field 2)
-└─ ... (more fields)
-```
-
-### FieldRenderer Hook Composition
-
-**FieldRenderer** doesn't have business logic - it uses hooks:
-
-```typescript
-const { value, setValue } = useFieldValue(fieldKey);
-const { options, isLoading } = useFieldOptions(fieldKey);
-const { hasError, combinedError, warning, isValidating } = useFieldState(fieldKey);
-const { isReadOnly, isEditable } = useFieldReadOnly(fieldKey);
-```
-
-Each hook:
-
-- Reads from the store
-- Provides data or callbacks
-- Subscribes to relevant state only (optimized)
-
-### Field Registry
-
-Fields are **defined in configuration**, not hardcoded in JSX:
-
-```typescript
-// config/fieldRegistry.ts
-export const FIELD_REGISTRY: Record<keyof OrderStateData, FieldDefinition> = {
-  symbol: {
-    label: "Currency Pair",
-    component: "Select",
-    order: 1,
-  },
-  direction: {
-    label: "Direction",
-    component: "Toggle",
-    order: 2,
-  },
-  orderType: {
-    label: "Order Type",
-    component: "Select",
-    order: 3,
-  },
-  notional: {
-    label: "Amount",
-    component: "AmountWithCurrency",
-    order: 4,
-  },
-  limitPrice: {
-    label: "Limit Price",
-    component: "LimitPriceWithCheckbox",
-    order: 5,
-  },
-  // ... more fields
-};
-```
-
-### Component Types
-
-| Component | Use Case | Props |
-|-----------|----------|-------|
-| `Input` | Text/number input | `type`, `value`, `onChange` |
-| `Select` | Dropdown selection | `value`, `onChange`, `options` |
-| `Toggle` | Binary/ternary choice (BUY/SELL) | `value`, `onChange`, `options` |
-| `AmountWithCurrency` | Amount with currency toggle | `value`, `onChange`, `ccy1`, `ccy2` |
-| `LimitPriceWithCheckbox` | Price with "grab" button | `value`, `onChange`, `direction` |
-
----
-
-## Validation System
-
-### Three-Level Validation
-
-#### 1. Sync Validation (Valibot)
-
-Runs immediately when field changes (debounced 300ms).
-
-```typescript
-// config/validation.ts - Schemas aligned with GraphQL
-export const LimitOrderSchema = v.object({
-  symbol: symbolSchema,
-  direction: directionSchema,
-  orderType: v.literal("LIMIT"),
-  notional: notionalSchema,
-  limitPrice: priceSchema,  // Required for LIMIT
-  account: requiredString,
-  // ... other fields
-});
-
-export const SCHEMA_MAP = {
-  TAKE_PROFIT: TakeProfirOrderSchema,
-  STOP_LOSS: StopLossOrderSchema,
-  // ... other order types
-};
-```
-
-Flow:
-
-```typescript
-// In ValidationSlice.validateField()
-1. Get schema for current orderType
-2. Parse field value with schema
-3. If error: store in state.errors[fieldKey]
-4. Display error on field
-```
-
-#### 2. Async Validation (Server)
-
-Runs after sync validation passes.
-
-```typescript
-// Server checks firm limits, risk rules, etc.
-const result = await graphqlClient.query({
-  query: VALIDATE_FIELD_QUERY,
-  variables: {
-    field: "notional",
-    value: 5000000,
-    orderType: "LIMIT",
-    // ... context
-  },
-});
-
-// Server returns:
-{
-  ok: false,
-  type: "HARD" | "SOFT",  // HARD = blocking, SOFT = warning
-  message: "Exceeds firm limit"
-}
-```
-
-#### 3. Ref Data Validation
-
-Checks if selected accounts/pools/currencies exist.
-
-```typescript
-// In ValidationSlice.validateRefData()
-const errors = {};
-if (account && !accounts.find(a => a.sdsId === account)) {
-  errors.account = "Account not available";
-}
-if (pool && !pools.find(p => p.value === pool)) {
-  errors.liquidityPool = "Pool not available";
-}
-// ... etc
-```
-
-### Submission-Time Validation
-
-When user clicks Submit:
-
-```typescript
-// SubmissionSlice.submitOrder()
-1. Call validateOrderForSubmission(values)
-2. Returns { valid: false, errors: { field: "message" } }
-3. If invalid: show errors, don't submit
-4. If valid: execute GraphQL mutation
-```
-
----
-
-## FDC3 Intent Handling
-
-### What is FDC3?
-
-Financial Desktop Connectivity Standard - allows apps to communicate. Example: Portfolio app sends "ViewInstrument" intent to order entry app.
-
-### Intent Flow
-
-```txt
-Portfolio App
-    │
-    └─→ Send FDC3 Intent (symbol: "EURUSD")
-            │
-            ▼
-    Order Entry App receives
-            │
-            ├─→ User has unsaved changes?
-            │   └─→ Show Fdc3ConfirmDialog
-            │       ├─→ Accept: Merge intent into form
-            │       └─→ Reject: Discard intent
-            │
-            └─→ User has no changes?
-                └─→ Auto-accept, apply intent
-```
-
-### Intent Mapping
-
-```typescript
-// api/fdc3/intentMapper.ts
-export const mapFdc3ToOrderData = (intent: FDC3Intent): Partial<OrderStateData> => {
-  return {
-    symbol: intent.instrument?.id?.ticker || intent.symbol,
-    direction: intent.direction === "buy" ? "BUY" : "SELL",
-    notional: intent.quantity,
-    // ... map other fields
-  };
-};
-```
-
-### Code Flow
-
-1. **Intent Arrives** (`fdc3Service.ts`)
+1. **`src/types/domain.ts`** - Add field to `OrderStateData` interface
 
    ```typescript
-   fdc3.addIntentListener("ViewInstrument", (intent) => {
-     store.setPendingIntent(intent);
+   export interface OrderStateData {
+     // ... existing fields
+     myNewField?: string;  // Add here
+   }
+   ```
+
+2. **`src/config/fieldRegistry.ts`** - Register the field with label and component
+
+   ```typescript
+   export const FIELD_REGISTRY = {
+     // ... existing fields
+     myNewField: {
+       label: "My New Field",
+       component: "InputText",  // or Select, Toggle, etc.
+       order: 100,  // Display order
+     }
+   };
+   ```
+
+3. **`src/config/validation.ts`** - Add validation schema
+
+   ```typescript
+   // In sharedOptional or specific order schemas
+   const sharedOptional = {
+     // ... existing
+     myNewField: optionalString,  // or required schema
+   };
+   ```
+
+4. **`src/config/orderConfig.ts`** - Add to relevant order types
+
+   ```typescript
+   export const ORDER_TYPES = {
+     [OrderType.FLOAT]: {
+       fields: [
+         "currencyPair", "side", "orderType",
+         "myNewField",  // Add here
+         // ... other fields
+       ],
+       editableFields: ["myNewField"],  // If amendable
+     }
+   };
+   ```
+
+**Optional Files (if needed):**
+
+5. **`src/config/visibilityRules.ts`** - Add if field should be conditionally visible
+
+   ```typescript
+   myNewField: (values) => values.orderType === OrderType.FLOAT
+   ```
+
+6. **`src/hooks/fieldConnectors/useFieldOptions.ts`** - Add if field is a Select dropdown
+
+   ```typescript
+   if (field === "myNewField") {
+     return {
+       options: [
+         { value: "OPTION1", label: "Option 1" },
+         { value: "OPTION2", label: "Option 2" }
+       ],
+       isLoading: false
+     };
+   }
+   ```
+
+**That's it!** The field will automatically appear in the form.
+
+---
+
+### Scenario 2: Add a New Order Type
+
+**Files to Change:**
+
+1. **`src/types/domain.ts`** - Add enum value
+
+   ```typescript
+   export enum OrderType {
+     // ... existing types
+     MY_NEW_TYPE = "MY_NEW_TYPE",
+   }
+   ```
+
+2. **`src/config/orderConfig.ts`** - Add configuration
+
+   ```typescript
+   export const ORDER_TYPES: Record<OrderType, OrderConfig> = {
+     // ... existing
+     [OrderType.MY_NEW_TYPE]: {
+       label: "My New Type",
+       fields: ["currencyPair", "side", "orderType", "amount", "level"],
+       editableFields: ["amount", "level"],
+     }
+   };
+   ```
+
+3. **`src/config/validation.ts`** - Add validation schema
+
+   ```typescript
+   export const MyNewTypeOrderSchema = v.object({
+     ...commonBase,
+     ...sharedOptional,
+     level: priceSchema,  // Example: require level
+   });
+
+   export const SCHEMA_MAP: Record<OrderType, v.GenericSchema> = {
+     // ... existing
+     [OrderType.MY_NEW_TYPE]: MyNewTypeOrderSchema,
+   };
+   ```
+
+4. **`src/config/visibilityRules.ts`** - Add visibility rules if needed
+
+   ```typescript
+   // Example: show special field only for this type
+   mySpecialField: (values) => values.orderType === OrderType.MY_NEW_TYPE
+   ```
+
+5. **Backend** - Add to GraphQL schema (`backend/schema/typeDefs.js`)
+
+   ```javascript
+   enum OrderType {
+     # ... existing
+     MY_NEW_TYPE
+   }
+   ```
+
+**Optional:** Update `backend/data/orderTypesWithPools.json` with liquidity pools
+
+---
+
+### Scenario 3: Add/Change Field Validation
+
+**For Sync Validation (Client-Side):**
+
+**File: `src/config/validation.ts`**
+
+```typescript
+// Example: Add custom validation for startMode
+if (values.startMode === "START_AT") {
+  if (!values.startTime || values.startTime === "") {
+    errors.startTime = "Start time is required when Start Mode is 'Start At'";
+  }
+  if (!values.startDate || values.startDate === "") {
+    errors.startDate = "Start date is required when Start Mode is 'Start At'";
+  }
+}
+```
+
+**For Async Validation (Server-Side):**
+
+**File: `backend/schema/resolvers.js`**
+
+```javascript
+Query: {
+  validateField: async (_, { input }) => {
+    // Add server-side validation logic
+    if (input.field === "amount") {
+      if (input.value > firmLimit) {
+        return {
+          field: "amount",
+          ok: false,
+          type: "HARD",  // Blocking error
+          message: "Exceeds firm limit"
+        };
+      }
+    }
+  }
+}
+```
+
+---
+
+### Scenario 4: Change Field Visibility Conditionally
+
+**File: `src/config/visibilityRules.ts`**
+
+```typescript
+export const FIELD_VISIBILITY_RULES: Record<string, (values: OrderStateData) => boolean> = {
+  // Show field for specific order types
+  level: (values) => {
+    const requiresLevel = [OrderType.TAKE_PROFIT, OrderType.STOP_LOSS];
+    return requiresLevel.includes(values.orderType);
+  },
+
+  // Show field based on another field's value
+  startTime: (values) => values.startMode === "START_AT",
+
+  // Complex condition
+  liquidityPool: (values) => {
+    if (values.orderType === OrderType.FIXING) return false;
+    if (values.orderType === OrderType.STOP_LOSS && values.liquidityPool === "Float Pool") {
+      return false;  // Hide level for STOP_LOSS with Float Pool
+    }
+    return true;
+  }
+};
+```
+
+**That's it!** The `useFieldVisibility` hook automatically applies these rules.
+
+---
+
+### Scenario 5: Add Dropdown Options for a Select Field
+
+**File: `src/hooks/fieldConnectors/useFieldOptions.ts`**
+
+```typescript
+export const useFieldOptions = (field: keyof OrderStateData) => {
+  // ... existing code
+
+  // Add static options
+  if (field === "startMode") {
+    return {
+      options: [
+        { value: "START_NOW", label: "Start Now" },
+        { value: "START_AT", label: "Start At" }
+      ],
+      isLoading: false
+    };
+  }
+
+  // Add dynamic options from ref data
+  if (field === "account") {
+    return {
+      options: accounts.map(acc => ({
+        value: acc.sdsId,
+        label: acc.name
+      })),
+      isLoading: isLoadingRefData
+    };
+  }
+
+  // Add conditional options based on other fields
+  if (field === "triggerSide") {
+    const side = currentSide;
+    if (side === "BUY") {
+      return {
+        options: [
+          { value: "TRAILING_BID", label: "Trailing Bid" },
+          { value: "MID", label: "Mid" },
+          { value: "LEADING_OFFER", label: "Leading Offer" }
+        ],
+        isLoading: false
+      };
+    }
+    // ... different options for SELL
+  }
+};
+```
+
+---
+
+### Scenario 6: Modify Order Submission Logic
+
+**File: `src/store/slices/createSubmissionSlice.ts`**
+
+**Key sections to modify:**
+
+1. **Pre-submission validation** (lines 329-362)
+
+   ```typescript
+   // Add custom validation before submit
+   const validationResult = validateOrderForSubmit(values);
+   if (!validationResult.valid) {
+     // Handle errors
+   }
+   ```
+
+2. **Build mutation variables** (lines 58-89 for CREATE, 94-116 for AMEND)
+
+   ```typescript
+   const buildCreateOrderVariables = (values: OrderStateData) => ({
+     orderEntry: {
+       // Add new field to mutation
+       myNewField: values.myNewField,
+     }
    });
    ```
 
-2. **Check for Unsaved Changes** (`App.tsx`)
+3. **Handle success/failure** (lines 207-261)
 
    ```typescript
-   if (isDirty && pendingIntent) {
-     showFdc3ConfirmDialog();
+   if (mutationResult.success) {
+     // Custom success handling
+   } else {
+     // Custom failure handling
    }
    ```
 
-3. **User Accepts/Rejects** (`Fdc3ConfirmDialog.tsx`)
-
-   ```typescript
-   // Accept
-   setFdc3Intent(mapFdc3ToOrderData(pendingIntent));
-   clearPendingIntent();
-
-   // Reject
-   clearPendingIntent();
-   ```
-
-4. **Form Updates** (automatic via `getDerivedValues()`)
-   - Intent data layers into form (Priority 3)
-   - User can override with manual edits (Priority 4)
-
----
-
-## Scenarios & Workflows
-
-### Scenario 1: User Enters an Order
-
-```txt
-1. User selects Symbol "GBPUSD" (Select field)
-   → setFieldValue("symbol", "GBPUSD")
-   → Stored in UserInteractionSlice.dirtyValues
-
-2. useFieldValue hook detects change
-   → Triggers debounced validation (300ms)
-
-3. Validation runs
-   → Sync: Check schema (valid)
-   → Async: Check server (valid)
-   → Display on field (no error)
-
-4. User selects Direction "BUY"
-   → setFieldValue("direction", "BUY")
-   → Same validation flow
-
-5. User enters Amount "1000000"
-   → OrderType is "LIMIT", so limitPrice required
-   → Validation error: "Limit price required"
-   → User sees error on limitPrice field
-
-6. User clicks Submit
-   → Call submitOrder()
-   → Full validation (all fields)
-   → If valid: GraphQL mutation
-   → On success: Set currentOrderId, show toast
-```
-
-### Scenario 2: FDC3 Intent Arrives
-
-```txt
-Before Intent:
-Form state: { symbol: "GBPUSD", direction: "BUY", notional: 1000000 }
-isDirty: true (user has made edits)
-
-Portfolio app sends: { symbol: "EURUSD", direction: "SELL", quantity: 500000 }
-
-1. Intent received by fdc3Service
-   → Store in pendingIntent
-
-2. App detects isDirty && pendingIntent
-   → Show Fdc3ConfirmDialog
-   → "You have unsaved changes. Accept intent?"
-
-3a. User clicks "Accept"
-    → Call setFdc3Intent(mapFdc3ToOrderData(intent))
-    → Fdc3IntentSlice.fdc3Intent = { symbol: "EURUSD", ... }
-    → getDerivedValues() returns merged data
-    → Form updates:
-      - symbol: "EURUSD" (from intent, Priority 3)
-      - direction: "SELL" (from intent, Priority 3)
-      - notional: 500000 (from intent, Priority 3)
-
-3b. User clicks "Reject"
-    → Just clear pendingIntent
-    → Form unchanged
-```
-
-### Scenario 3: Update Field Based on Another Field
-
-**Example:** When orderType changes to LIMIT, show limitPrice field (visibility rule)
+**GraphQL Mutation: `src/graphql/mutations.ts`**
 
 ```typescript
-// config/visibilityRules.ts
-export const FIELD_VISIBILITY_RULES: Record<string, (values: OrderStateData) => boolean> = {
-  limitPrice: (values) => {
-    return ["LIMIT", "TAKE_PROFIT"].includes(values.orderType);
-  },
-  stopPrice: (values) => {
-    return values.orderType === "STOP_LOSS";
-  },
-  // ... other rules
-};
-
-// In ReorderableFieldList.tsx
-const visibleFields = fields.filter((f) => {
-  return isFieldVisible(f, getDerivedValues());
-});
-// Only render visible fields
-```
-
-**Another Example:** Auto-populate limitPrice when direction changes
-
-```typescript
-// In a hook or useEffect
-const direction = useOrderEntryStore((s) => s.getDerivedValues().direction);
-const currentPrice = useOrderEntryStore((s) => s.currentBuyPrice);
-
-useEffect(() => {
-  const currentLimitPrice = useOrderEntryStore((s) => s.getDerivedValues().limitPrice);
-
-  if (!currentLimitPrice && direction === "BUY") {
-    setFieldValue("limitPrice", currentPrice);
+export const CREATE_ORDER_MUTATION = gql`
+  mutation CreateOrder($orderEntry: OrderEntry!) {
+    createOrder(orderEntry: $orderEntry) {
+      result
+      orderId
+      myNewField  # Add if server returns it
+    }
   }
-}, [direction, currentPrice]);
-```
-
-### Scenario 4: Amend an Existing Order
-
-```txt
-1. User views submitted order (editMode: "viewing")
-
-2. User double-clicks order
-   → Call amendOrder()
-   → Set editMode to "amending"
-
-3. Form becomes editable
-   → Only editable fields enabled (e.g., amount, limitPrice)
-   → Symbol, direction locked
-
-4. User changes amount and clicks Submit
-   → submitOrder() detects editMode === "amending"
-   → Calls AMEND_ORDER_MUTATION (not CREATE)
-   → On success: Show "Order amended" toast
-```
-
-### Scenario 5: Field Dependency Chain
-
-**Example:** Changing symbol triggers currency pair parsing → updates ccy1/ccy2 → AmountWithCurrency component re-renders
-
-```txt
-User changes symbol:
-  setFieldValue("symbol", "EURUSD")
-    ↓
-  Stored in UserInteractionSlice.dirtyValues
-    ↓
-  useFieldValue detects change → component re-renders
-    ↓
-  useOrderEntryStore reads updated symbol
-    ↓
-  currencyPairs.find(p => p.symbol === "EURUSD")
-    ↓
-  Gets { symbol: "EURUSD", ccy1: "EUR", ccy2: "USD" }
-    ↓
-  AmountWithCurrency receives updated ccy1/ccy2
-    ↓
-  Component re-renders with new currency labels
+`;
 ```
 
 ---
 
-## Code Organization
+### Scenario 7: Add Read-Only Rules for Fields
 
-### Directory Structure Explained
-
-```txt
-src/
-├── components/
-│   ├── atoms/              # Base components (Input, Select, Spinner)
-│   ├── molecules/          # Composed components (AmountWithCurrency, ToggleSwitch)
-│   └── organisms/          # Page-level (OrderForm, FieldRenderer, OrderFooter)
-│
-├── config/
-│   ├── fieldRegistry.ts    # Field definitions
-│   ├── validation.ts       # Valibot schemas (GraphQL-aligned)
-│   ├── visibilityRules.ts  # Conditional field visibility
-│   ├── componentFactory.ts # Component type predicates
-│   ├── constants.ts        # App constants (debounce, price steps, etc.)
-│   └── orderConfig.ts      # Order type configurations
-│
-├── graphql/
-│   ├── client.ts           # Apollo client setup
-│   ├── mutations.ts        # createOrder, amendOrder
-│   ├── queries.ts          # validateField
-│   ├── subscriptions.ts    # orderStatus, user preferences
-│   └── types.ts            # GraphQL response types
-│
-├── hooks/
-│   ├── fieldConnectors/    # Hooks for form fields
-│   │  ├── useFieldValue.ts
-│   │  ├── useFieldState.ts
-│   │  ├── useFieldOptions.ts
-│   │  ├── useFieldReadOnly.ts
-│   │  └── useFieldVisibility.ts
-│   ├── useAppInit.ts       # App initialization
-│   ├── useDebounce.ts      # Debounce utility
-│   └── useOrderTracking.ts # Track submitted order
-│
-├── store/
-│   ├── index.ts            # Store creation
-│   ├── slices/             # Individual slices
-│   │  ├── createAppSlice.ts
-│   │  ├── createDerivedSlice.ts
-│   │  ├── createValidationSlice.ts
-│   │  ├── createSubmissionSlice.ts
-│   │  ├── createFdc3IntentSlice.ts
-│   │  ├── createUserInteractionSlice.ts
-│   │  ├── createUserPrefsSlice.ts
-│   │  ├── createDefaultsSlice.ts
-│   │  ├── createRefDataSlice.ts
-│   │  ├── createPriceSlice.ts
-│   │  └── createFieldOrderSlice.ts
-│   └── middleware/
-│      └── logger.ts        # Store logging middleware
-│
-├── types/
-│   ├── domain.ts           # OrderStateData and related types
-│   ├── store.ts            # Zustand slice interfaces
-│   └── layers.ts           # Layer types (Defaults, UserPrefs, etc.)
-│
-└── utils/
-   ├── currencyPairHelpers.ts
-   ├── idGenerator.ts
-   └── numberFormats.ts
-```
-
-### Key Principles
-
-1. **Configuration-Driven UI** - Fields defined in config, not JSX
-2. **Hook Composition** - Small, focused hooks over monolithic components
-3. **Type Safety** - Valibot schemas, proper TypeScript typing
-4. **Separation of Concerns** - Each slice has one responsibility
-5. **No Hardcoded Logic** - Constants in `constants.ts`, rules in `visibilityRules.ts`
-
----
-
-## Common Development Tasks
-
-### Add a New Order Field
-
-1. Add to `OrderStateData` in `types/domain.ts`
-2. Add to `FIELD_REGISTRY` in `config/fieldRegistry.ts`
-3. Add validation schema to `config/validation.ts`
-4. Add visibility rule if conditional in `config/visibilityRules.ts`
-5. Done - automatically appears in form
-
-### Add a New Validation Rule
-
-1. Add Valibot schema to `config/validation.ts`
-2. Include it in the order type's schema (e.g., `LimitOrderSchema`)
-3. Message automatically shown on field if invalid
-
-### Add a New Visibility Condition
-
-1. Add rule to `FIELD_VISIBILITY_RULES` in `config/visibilityRules.ts`
-2. Hook checks it automatically
-3. Field shows/hides based on condition
-
-### Debug Store State
-
-```javascript
-// Browser console
-window.__ORDER_STORE__.getState()
-// See entire state tree
-```
-
-### Check Field Validation
+**File: `src/config/orderConfig.ts`**
 
 ```typescript
-const errors = useOrderEntryStore((s) => s.errors);
-const serverErrors = useOrderEntryStore((s) => s.serverErrors);
-const warnings = useOrderEntryStore((s) => s.warnings);
+export const ORDER_TYPES = {
+  [OrderType.FLOAT]: {
+    fields: ["currencyPair", "side", "amount", "level"],
+    editableFields: ["amount", "level"],  // Only these can be amended
+    // currencyPair and side are read-only when amending
+  }
+};
+```
+
+**Alternative: Always read-only fields**
+
+**File: `src/hooks/fieldConnectors/useFieldReadOnly.ts`**
+
+```typescript
+// Add to ALWAYS_READONLY constant
+const ALWAYS_READONLY: (keyof OrderStateData)[] = [
+  "orderId",
+  "execution",
+  "myAlwaysReadOnlyField"  // Add here
+];
 ```
 
 ---
 
-## Architecture Decisions
+### Scenario 8: Add Custom Component for a Field
 
-### Why Zustand?
+**Step 1: Create Component**
 
-- Lightweight (compared to Redux)
-- Simple slice pattern
-- Great TypeScript support
-- Minimal boilerplate
-
-### Why Valibot?
-
-- Tiny bundle size (~1KB)
-- Aligns perfectly with GraphQL schemas
-- Type-safe validation
-
-### Why we have Priority Layers?
-
-- Handles async data loading gracefully
-- FDC3 intents work regardless of load timing
-- User edits always take precedence
-- No race condition management needed
-
-### Why FieldRenderer with Hooks?
-
-- Each field concern isolated in a hook
-- Easy to test individual behaviors
-- Components stay small and readable
-- Optimized subscriptions per field
-
----
-
-### Field Ordering & Reorder Mode
-
-Users can customize the order of fields in the form using drag-and-drop.
-
-**Architecture:**
+**File: `src/components/atoms/MyCustomInput.tsx`**
 
 ```typescript
-// FieldOrderSlice - Manages per-order-type field ordering
-interface FieldOrderSlice {
-  fieldOrders: FieldOrderMap;           // Persisted field order from localStorage
-  draftFieldOrders: FieldOrderMap;      // Pending changes during reorder mode
-  isReorderMode: boolean;               // Whether user is in reorder mode
-  getFieldOrder: (orderType) => fields; // Get ordered fields for order type
-  updateFieldOrder: (orderType, fields) => void; // Update draft field order
-  resetFieldOrderToDefault: (orderType) => void; // Reset draft to default
-  saveAndExitReorderMode: () => void;   // Persist draft and exit mode
-  toggleReorderMode: () => void;        // Enter/exit reorder mode
+interface MyCustomInputProps {
+  value: string | undefined;
+  onChange: (value: string) => void;
+  hasError?: boolean;
+  readOnly?: boolean;
+}
+
+export const MyCustomInput: React.FC<MyCustomInputProps> = ({
+  value,
+  onChange,
+  hasError,
+  readOnly
+}) => {
+  return (
+    <div className={hasError ? styles.error : ""}>
+      <input
+        value={value || ""}
+        onChange={(e) => onChange(e.target.value)}
+        readOnly={readOnly}
+      />
+    </div>
+  );
+};
+```
+
+**Step 2: Add Type Predicate**
+
+**File: `src/config/componentFactory.ts`**
+
+```typescript
+export const isMyCustomInputComponent = (component: string): boolean =>
+  component === "MyCustomInput";
+
+export const isSpecialComponent = (component: string): boolean => {
+  return (
+    // ... existing
+    isMyCustomInputComponent(component)
+  );
+};
+```
+
+**Step 3: Render in FieldRenderer**
+
+**File: `src/components/organisms/FieldRenderer.tsx`**
+
+```typescript
+import { MyCustomInput } from "../atoms/MyCustomInput";
+import { isMyCustomInputComponent } from "../../config/componentFactory";
+
+// In component render logic
+if (isMyCustomInputComponent(component)) {
+  return (
+    <MyCustomInput
+      value={value as string}
+      onChange={setValue}
+      hasError={hasError}
+      readOnly={isReadOnly}
+    />
+  );
 }
 ```
 
-**Flow:**
+**Step 4: Use in Field Registry**
 
-1. **Enter Reorder Mode**: User clicks "Reorder Fields" button
-   - `toggleReorderMode()` sets `isReorderMode: true`
-   - `ReorderModeBanner` appears with "Save" and "Reset" buttons
-   - `ReorderableFieldList` shows drag handles on each field
+**File: `src/config/fieldRegistry.ts`**
 
-2. **Drag Fields**: User reorders fields by dragging
-   - `updateFieldOrder()` updates `draftFieldOrders` (not persisted yet)
-   - Changes are NOT saved until user clicks "Save"
-
-3. **Save**: User clicks "Save" button
-   - `saveAndExitReorderMode()` persists to localStorage
-   - Sets `isReorderMode: false` (banner disappears)
-   - Form re-renders with new field order
-
-4. **Reset**: User clicks "Reset to Default" button
-   - `resetFieldOrderToDefault()` clears draft
-   - Form goes back to default order
-   - Still in reorder mode (user can retry)
-
-**localStorage Keys:**
-
-- `fx-order-field-order`: `{ "TAKE_PROFIT": [...fields], "STOP_LOSS": [...fields] }`
-- `fx-order-reorder-mode`: `"true" | "false"`
-
-**How to extend:**
-
-Field ordering is automatic - just add fields to `fieldRegistry.ts` and `ORDER_TYPES` in `orderConfig.ts`. The order defined in `ORDER_TYPES[orderType].fields` becomes the default, which users can customize.
+```typescript
+myField: {
+  label: "My Field",
+  component: "MyCustomInput",
+  order: 50
+}
+```
 
 ---
 
-### Field Visibility Rules
+### Scenario 9: Add Keyboard Shortcut
 
-Fields can be conditionally shown/hidden based on form state.
-
-**Architecture:**
+**File: `src/hooks/useKeyboardHotkeys.ts`**
 
 ```typescript
-// config/visibilityRules.ts
-export const FIELD_VISIBILITY_RULES: Record<string, (values: OrderStateData) => boolean> = {
-  limitPrice: (values) => {
-    return ["LIMIT", "TAKE_PROFIT"].includes(values.orderType);
-  },
-  stopPrice: (values) => {
-    return values.orderType === "STOP_LOSS";
-  },
-  startTime: (values) => {
-    return values.orderType === "FLOAT";
-  },
-  iceberg: (values) => {
-    return ["TAKE_PROFIT", "STOP_LOSS"].includes(values.orderType);
-  },
-};
-```
-
-**How it works:**
-
-1. `useFieldVisibility(fieldKey)` hook reads the rule
-2. Calls the rule function with current form values
-3. Returns `true` to show, `false` to hide
-4. `FieldRenderer` checks visibility before rendering
-5. Hidden fields don't render, but keep their values in store
-
-**Common Patterns:**
-
-```typescript
-// Show field for specific order types
-myField: (values) => ["LIMIT", "STOP_LOSS"].includes(values.orderType)
-
-// Show field when another field has a value
-timeInForce: (values) => values.orderType !== null
-
-// Show field based on direction
-stopPrice: (values) => values.direction === "BUY" && values.orderType === "STOP_LOSS"
-
-// Show field when user has entitlements
-exoticField: (values) => userEntitlements.includes("EXOTIC_ORDERS")
-```
-
-**How to add a visibility rule:**
-
-1. Open `config/visibilityRules.ts`
-2. Add a function for your field:
-
-   ```typescript
-   myNewField: (values) => {
-     return values.someOtherField !== null;
-   }
-   ```
-
-3. Done - `useFieldVisibility` automatically picks it up
-
----
-
-### Keyboard Hotkeys
-
-Power users can use keyboard shortcuts for common actions.
-
-**Implemented Hotkeys:**
-
-| Shortcut | Action | Used By |
-|----------|--------|---------|
-| `Ctrl + Enter` | Submit order | OrderForm |
-| `Esc` | Cancel / Reset form | OrderForm |
-
-**Architecture:**
-
-```typescript
-// hooks/useKeyboardHotkeys.ts
 export const useKeyboardHotkeys = () => {
-  const submitOrder = useOrderEntryStore((s) => s.submitOrder);
-  const resetFormInteractions = useOrderEntryStore((s) => s.resetFormInteractions);
+  // ... existing hooks
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Existing shortcuts
       if (e.ctrlKey && e.key === "Enter") {
         e.preventDefault();
         submitOrder();
       }
-      if (e.key === "Escape") {
+
+      // Add new shortcut
+      if (e.shiftKey && e.key === "F") {
+        e.preventDefault();
+        // Focus on amount field
+        document.getElementById("field-amount")?.focus();
+      }
+
+      // Add another shortcut
+      if (e.altKey && e.key === "r") {
+        e.preventDefault();
         resetFormInteractions();
       }
     };
@@ -919,385 +478,576 @@ export const useKeyboardHotkeys = () => {
 };
 ```
 
-**How to add a hotkey:**
-
-1. Open `hooks/useKeyboardHotkeys.ts`
-2. Add a new condition in the `handleKeyDown` function
-3. Example:
-
-   ```typescript
-   if (e.shiftKey && e.key === "f") {
-     e.preventDefault();
-     store.getState().setFieldValue("notional", "");
-     // Focus notional field for speed entry
-   }
-   ```
-
 ---
 
-### Live Price Updates (PriceSlice)
+### Scenario 10: Change Default Values
 
-The app subscribes to live market prices and updates the form in real-time.
-
-**Architecture:**
+**File: `src/store/slices/createDefaultsSlice.ts`**
 
 ```typescript
-// store/slices/createPriceSlice.ts
-interface PriceSlice {
-  currentBuyPrice: number | null;   // Latest buy (bid) price
-  currentSellPrice: number | null;  // Latest sell (ask) price
-  priceSubscriptionActive: boolean; // Whether subscription is running
-  subscribeToPrices: (symbol: string) => void; // Start subscription
-  unsubscribePrices: () => void;    // Stop subscription
-}
-```
-
-**Flow:**
-
-1. **Subscription Start** - When symbol changes or app initializes
-   - `subscribeToPrices(symbol)` calls GraphQL subscription
-   - Backend streams price updates via WebSocket
-   - Each update: `currentBuyPrice` and `currentSellPrice` are updated
-
-2. **Real-Time Updates** - Components read prices
-   - `OrderHeader` displays live ticking prices
-   - `LimitPriceWithCheckbox` can auto-fill limit price from current price
-   - User sees live updates without manual refresh
-
-3. **Subscription Stop** - When symbol changes or app unmounts
-   - `unsubscribePrices()` closes the WebSocket subscription
-   - Prevents memory leaks and unnecessary updates
-
-**GraphQL Subscription:**
-
-```typescript
-// graphql/subscriptions.ts
-export const GATOR_DATA_SUBSCRIPTION = gql`
-  subscription GatorData($subscription: GatorSubscription) {
-    gatorData(subscription: $subscription) {
-      topOfTheBookBuy { price precisionValue }
-      topOfTheBookSell { price precisionValue }
-    }
-  }
-`;
-```
-
-**Backend Returns:**
-
-```typescript
-{
-  gatorData: {
-    topOfTheBookBuy: { price: 1.27345, precisionValue: 1.27345 },
-    topOfTheBookSell: { price: 1.27115, precisionValue: 1.27115 }
-  }
-}
-```
-
-**How prices are used:**
-
-```typescript
-// In OrderHeader - Display prices
-const { currentBuyPrice, currentSellPrice } = useOrderEntryStore(...);
-return (
-  <div>Buy: {currentBuyPrice?.toFixed(5)} | Sell: {currentSellPrice?.toFixed(5)}</div>
-);
-
-// In LimitPriceWithCheckbox - Grab current price
-const onClick = () => {
-  const currentPrice = direction === "BUY" ? currentSellPrice : currentBuyPrice;
-  setFieldValue("limitPrice", currentPrice);
+export const HARDCODED_DEFAULTS: DefaultsLayerData = {
+  currencyPair: "GBPUSD",  // Change default currency pair
+  side: OrderSide.BUY,      // Change default side
+  orderType: OrderType.FLOAT,  // Change default order type
+  amount: { amount: 1000000, ccy: "GBP" },  // Change default amount
+  liquidityPool: "POOL1",   // Change default pool
+  // ... add other defaults
 };
 ```
 
 ---
 
-### Custom Components & Field Types
+### Scenario 11: Add FDC3 Intent Mapping
 
-The app supports various field component types, each with custom behavior.
-
-**Available Components:**
-
-| Component | Purpose | Example |
-|-----------|---------|---------|
-| `InputNumber` | Numeric input with formatting | Notional, Iceberg |
-| `InputText` | Text input (read-only in view mode) | Status |
-| `Select` | Dropdown selection | Symbol, Account, Pool |
-| `Toggle` | Binary choice (BUY/SELL) | Direction |
-| `DateTime` | Date/time picker | Start Time |
-| `AmountWithCurrency` | Amount with currency toggle (CCY1/CCY2) | Notional with ccy toggle |
-| `LimitPriceWithCheckbox` | Price with "Grab Price" button | Limit Price, Stop Price |
-
-**Component Factory:**
-
-The `componentFactory.ts` provides type predicates for safe component type checking:
+**File: `src/api/fdc3/intentMapper.ts`**
 
 ```typescript
-// config/componentFactory.ts
-export const isSelectComponent = (component: string): component is "Select" =>
-  component === "Select";
+export const mapFdc3ToOrderData = (
+  intent: FDC3Intent
+): Partial<OrderStateData> => {
+  return {
+    currencyPair: intent.instrument?.id?.ticker || intent.symbol,
+    side: intent.direction === "buy" ? OrderSide.BUY : OrderSide.SELL,
+    amount: intent.quantity ? {
+      amount: intent.quantity,
+      ccy: getCurrencyFromSymbol(intent.symbol)
+    } : undefined,
 
-export const isToggleComponent = (component: string): component is "Toggle" =>
-  component === "Toggle";
-
-export const isAmountWithCurrencyComponent = (component: string) =>
-  component === "AmountWithCurrency";
-
-export const isLimitPriceComponent = (component: string) =>
-  component === "LimitPriceWithCheckbox";
+    // Add new field mapping
+    myNewField: intent.customField,  // Map from FDC3 intent
+  };
+};
 ```
-
-**How FieldRenderer uses components:**
-
-```typescript
-// components/organisms/FieldRenderer.tsx
-if (isSelectComponent(component)) {
-  return <Select value={value} options={options} onChange={setValue} />;
-}
-
-if (isToggleComponent(component)) {
-  return <Toggle value={value} options={["BUY", "SELL"]} onChange={setValue} />;
-}
-
-if (isAmountWithCurrencyComponent(component)) {
-  return <AmountWithCurrency value={value} onChange={setValue} {...amountConfig} />;
-}
-
-if (isLimitPriceComponent(component)) {
-  return <LimitPriceWithCheckbox value={value} onChange={setValue} {...priceConfig} />;
-}
-```
-
-**How to add a new component type:**
-
-1. Create the component in `components/atoms/` or `components/molecules/`
-
-   ```typescript
-   export const MyCustomComponent: React.FC<MyCustomProps> = ({ value, onChange }) => {
-     return <div>...</div>;
-   };
-   ```
-
-2. Add component type to `FieldDefinition` in `fieldRegistry.ts`:
-
-   ```typescript
-   export interface FieldDefinition {
-     label: string;
-     component: "InputNumber" | "Select" | "Toggle" | "MyCustom"; // Add here
-   }
-   ```
-
-3. Add type predicate to `componentFactory.ts`:
-
-   ```typescript
-   export const isMyCustomComponent = (component: string): component is "MyCustom" =>
-     component === "MyCustom";
-   ```
-
-4. Add rendering logic to `FieldRenderer.tsx`:
-
-   ```typescript
-   if (isMyCustomComponent(component)) {
-     return <MyCustomComponent value={value} onChange={setValue} />;
-   }
-   ```
-
-5. Use in field registry:
-
-   ```typescript
-   myField: {
-     label: "My Custom Field",
-     component: "MyCustom"
-   }
-   ```
 
 ---
 
-## Unit Testing
+### Scenario 12: Add GraphQL Subscription for Real-Time Updates
 
-This application uses **Vitest** with **@testing-library/react** for comprehensive unit testing. Current coverage is **99.85% lines** with **557 passing tests**.
+**Step 1: Define Subscription**
 
-### Testing Strategy
-
-**Three test levels:**
-
-1. **Store Slices** - Test state mutations and actions
-2. **Hooks** - Test data selection and effects
-3. **Config/Utils** - Test deterministic functions
-
-**No testing for:**
-
-- Components (UI testing is fragile and changes frequently)
-- GraphQL queries/mutations (mocked, assume Apollo works)
-- API calls (mocked, tested at integration level)
-
-### Store Slice Tests
-
-**Pattern: Test actions and derived state**
+**File: `src/graphql/subscriptions.ts`**
 
 ```typescript
-// Example: createValidationSlice.spec.ts
-describe("createValidationSlice", () => {
-  it("expect error when notional is negative", () => {
-    const store = createStore();
-    store.validateField("notional", -1000);
-    expect(store.errors.notional).toBe("Amount must be positive");
-  });
-
-  it("expect server validation to be called after sync validation", async () => {
-    const store = createStore();
-    vi.mocked(graphqlClient.query).mockResolvedValue({
-      data: { validateField: { ok: false, type: "HARD", message: "Limit exceeded" } }
-    });
-
-    await store.validateField("notional", 5000000);
-
-    expect(store.serverErrors.notional).toBe("Limit exceeded");
-  });
-
-  it("expect stale validation results to be ignored", async () => {
-    const store = createStore();
-    // Simulate rapid validation - second one should win
-    store.validateField("notional", 1000000);
-    store.validateField("notional", 2000000);
-    // Wait for async to complete
-    await new Promise(r => setTimeout(r, 100));
-    // Result should be for 2000000, not 1000000
-  });
-});
-```
-
-**Key Points:**
-
-- Mock external dependencies (`graphqlClient`, `Valibot`)
-- Test both positive and negative scenarios
-- For async tests: mock Promise resolution/rejection
-- For race conditions: verify that stale results are ignored
-
-### Hook Tests
-
-**Pattern: Test derived state and subscriptions**
-
-```typescript
-// Example: useFieldOrder.spec.ts
-describe("useFieldOrder", () => {
-  it("expect field order from localStorage", () => {
-    const stored = { LIMIT: ["symbol", "direction", "notional"] };
-    vi.stubGlobal("localStorage", {
-      getItem: () => JSON.stringify(stored)
-    });
-
-    const { getFieldOrder } = useFieldOrder();
-    expect(getFieldOrder("LIMIT")).toEqual(["symbol", "direction", "notional"]);
-  });
-
-  it("expect reorder mode to toggle", () => {
-    const { isReorderMode, toggleReorderMode } = useFieldOrder();
-    expect(isReorderMode).toBe(false);
-    toggleReorderMode();
-    expect(isReorderMode).toBe(true);
-  });
-});
-```
-
-**Key Points:**
-
-- Use `renderHook` from @testing-library/react for custom hooks
-- Mock localStorage with `vi.stubGlobal`
-- Test state selectors and action invocation
-- Don't test re-render behavior (too implementation-specific)
-
-### Config/Utils Tests
-
-**Pattern: Test pure functions**
-
-```typescript
-// Example: validation.spec.ts
-describe("validation schemas", () => {
-  it("expect LIMIT_ORDER_SCHEMA to validate correctly", () => {
-    const result = v.safeParse(LIMIT_ORDER_SCHEMA, {
-      symbol: "GBPUSD",
-      direction: "BUY",
-      orderType: "LIMIT",
-      notional: 1000000,
-      limitPrice: 1.27,
-      account: "ACC123"
-    });
-
-    expect(result.success).toBe(true);
-  });
-
-  it("expect LIMIT_ORDER_SCHEMA to reject missing limitPrice", () => {
-    const result = v.safeParse(LIMIT_ORDER_SCHEMA, {
-      symbol: "GBPUSD",
-      direction: "BUY",
-      orderType: "LIMIT",
-      notional: 1000000,
-      // limitPrice is missing!
-      account: "ACC123"
-    });
-
-    expect(result.success).toBe(false);
-    expect(result.issues[0].path).toContain("limitPrice");
-  });
-});
-```
-
-**Key Points:**
-
-- Test every schema (one per order type)
-- Test both valid and invalid inputs
-- Verify error messages are clear
-- No mocking needed - these are pure functions
-
-### Mocking Patterns
-
-**GraphQL Client:**
-
-```typescript
-vi.mock("../../graphql/client", () => ({
-  graphqlClient: {
-    query: vi.fn(() => Promise.resolve({ data: {} })),
-    mutate: vi.fn(() => Promise.resolve({ data: {} })),
-    subscribe: vi.fn(() => ({
-      subscribe: vi.fn(() => ({ unsubscribe: vi.fn() }))
-    }))
+export const MY_SUBSCRIPTION = gql`
+  subscription MySubscription($input: MyInput!) {
+    myData(input: $input) {
+      field1
+      field2
+    }
   }
-}));
+`;
 ```
 
-**Valibot:**
+**Step 2: Create Hook**
+
+**File: `src/hooks/useMySubscription.ts`**
 
 ```typescript
-vi.mock("valibot", () => ({
-  safeParse: vi.fn()
-}));
+import { useSubscription } from "@apollo/client";
+import { MY_SUBSCRIPTION } from "../graphql/subscriptions";
+import { useOrderEntryStore } from "../store";
 
-// In test:
-vi.mocked(v.safeParse).mockReturnValue({
-  success: true,
-  output: mockData,
-  issues: []
-} as never);
+export const useMySubscription = () => {
+  const setMyData = useOrderEntryStore((s) => s.setMyData);
+
+  useSubscription(MY_SUBSCRIPTION, {
+    variables: { input: { id: "123" } },
+    onData: ({ data }) => {
+      if (data.data?.myData) {
+        setMyData(data.data.myData);
+      }
+    },
+    onError: (error) => {
+      console.error("Subscription error:", error);
+    }
+  });
+};
 ```
 
-**localStorage:**
+**Step 3: Use in App**
+
+**File: `src/App.tsx`**
 
 ```typescript
-vi.stubGlobal("localStorage", {
-  getItem: vi.fn(() => JSON.stringify({ key: "value" })),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn()
+import { useMySubscription } from "./hooks/useMySubscription";
+
+function App() {
+  useMySubscription();  // Add here
+  // ... rest of app
+}
+```
+
+---
+
+### Scenario 13: Add Custom Validation Error Handling
+
+**File: `src/store/slices/createSubmissionSlice.ts`**
+
+Modify the validation error handling (lines 336-354):
+
+```typescript
+if (!validationResult.valid) {
+  const errorCount = Object.keys(validationResult.errors).length;
+
+  // Custom error summary logic
+  let errorSummary: string;
+  if (errorCount === 1) {
+    const [field, message] = Object.entries(validationResult.errors)[0];
+    errorSummary = `${field}: ${message}`;
+  } else if (errorCount <= 3) {
+    errorSummary = Object.entries(validationResult.errors)
+      .map(([field, msg]) => `${field}: ${msg}`)
+      .join(", ");
+  } else {
+    errorSummary = `${errorCount} validation errors found`;
+  }
+
+  set((state) => {
+    state.status = "READY";
+    state.errors = {};
+    Object.entries(validationResult.errors).forEach(([fieldKey, errorMessage]) => {
+      state.errors[fieldKey] = errorMessage;
+    });
+    state.toastMessage = {
+      type: "error",
+      text: errorSummary,
+    };
+  });
+
+  return;
+}
+```
+
+---
+
+## Architecture Overview
+
+### Data Flow Diagram
+
+```txt
+User Input → Field Component → useFieldValue hook → Store (UserInteractionSlice)
+                                                           ↓
+                                              DerivedSlice.getDerivedValues()
+                                                           ↓
+                                    Merges: Defaults + UserPrefs + FDC3 + UserInput
+                                                           ↓
+                                              Final Form Values (OrderStateData)
+                                                           ↓
+                                            submitOrder() validates & submits
+                                                           ↓
+                                              GraphQL CREATE_ORDER_MUTATION
+```
+
+### Priority Layers (Important!)
+
+Data sources are merged in priority order (higher overrides lower):
+
+```txt
+Priority 1 (Lowest):  DefaultsSlice        - Hardcoded defaults
+Priority 2:           UserPrefsSlice       - User preferences from server
+Priority 3:           Fdc3IntentSlice      - FDC3 intent data
+Priority 4 (Highest): UserInteractionSlice - User manual edits (always wins!)
+```
+
+**Why this matters:**
+
+- FDC3 intent arriving late won't overwrite user edits
+- User preferences load async but don't override manual input
+- getDerivedValues() always returns the highest priority value for each field
+
+---
+
+## File Organization
+
+### Critical Files by Function
+
+**Configuration (Define fields, validation, visibility):**
+
+- `src/config/fieldRegistry.ts` - Field definitions (label, component, order)
+- `src/config/orderConfig.ts` - Order type configurations (fields, editable fields)
+- `src/config/validation.ts` - Valibot validation schemas (GraphQL-aligned)
+- `src/config/visibilityRules.ts` - Conditional field visibility
+- `src/config/constants.ts` - App constants (debounce, limits, steps)
+- `src/config/componentFactory.ts` - Component type predicates
+
+**Store Slices (State management):**
+
+- `src/store/slices/createDerivedSlice.ts` - Merged form values (getDerivedValues)
+- `src/store/slices/createValidationSlice.ts` - All validation state (errors, warnings)
+- `src/store/slices/createSubmissionSlice.ts` - Order submission (create/amend)
+- `src/store/slices/createUserInteractionSlice.ts` - User edits (Priority 4)
+- `src/store/slices/createFdc3IntentSlice.ts` - FDC3 data (Priority 3)
+- `src/store/slices/createUserPrefsSlice.ts` - User preferences (Priority 2)
+- `src/store/slices/createDefaultsSlice.ts` - Hardcoded defaults (Priority 1)
+- `src/store/slices/createAppSlice.ts` - App lifecycle (status, editMode, toast)
+- `src/store/slices/createRefDataSlice.ts` - Reference data (accounts, pools, symbols)
+
+**Hooks (Reusable logic):**
+
+- `src/hooks/fieldConnectors/useFieldValue.ts` - Get/set field value
+- `src/hooks/fieldConnectors/useFieldState.ts` - Get validation errors/warnings
+- `src/hooks/fieldConnectors/useFieldOptions.ts` - Get dropdown options
+- `src/hooks/fieldConnectors/useFieldReadOnly.ts` - Compute read-only state
+- `src/hooks/fieldConnectors/useFieldVisibility.ts` - Check field visibility
+- `src/hooks/useAppInit.ts` - App initialization (ref data, subscriptions, FDC3)
+- `src/hooks/useOrderTracking.ts` - Track submitted order status
+- `src/hooks/useKeyboardHotkeys.ts` - Keyboard shortcuts
+
+**Components:**
+
+- `src/components/organisms/FieldRenderer.tsx` - Renders individual field
+- `src/components/organisms/OrderForm.tsx` - Main form container
+- `src/components/molecules/ReorderableFieldList.tsx` - Drag-drop field list
+- `src/components/molecules/AmountWithCurrency.tsx` - Amount with ccy toggle
+- `src/components/atoms/Input.tsx` - Base input component
+- `src/components/atoms/Select.tsx` - Base select component
+
+**GraphQL:**
+
+- `src/graphql/mutations.ts` - CREATE_ORDER_MUTATION, AMEND_ORDER_MUTATION
+- `src/graphql/queries.ts` - VALIDATE_FIELD_QUERY
+- `src/graphql/subscriptions.ts` - ORDER_SUBSCRIPTION, USER_PREFS_SUBSCRIPTION
+
+**Types:**
+
+- `src/types/domain.ts` - OrderStateData, OrderType, OrderSide, all enums
+- `src/types/store.ts` - Zustand slice interfaces
+- `src/types/layers.ts` - Layer types (DefaultsLayerData, etc.)
+
+---
+
+## State Management
+
+### Store Structure
+
+```typescript
+interface BoundState {
+  // App lifecycle
+  status: "INITIALIZING" | "READY" | "SUBMITTING" | "ERROR";
+  editMode: "creating" | "viewing" | "amending";
+  currentOrderId: string | null;
+  toastMessage: { type: "success" | "error"; text: string } | null;
+
+  // Reference data (dropdown options)
+  accounts: Account[];
+  pools: LiquidityPool[];
+  currencyPairs: CurrencyPair[];
+  entitledOrderTypes: OrderType[];
+
+  // Priority layers (merged by DerivedSlice)
+  defaults: DefaultsLayerData;           // Priority 1
+  userPrefs: UserPrefsLayerData | null;  // Priority 2
+  fdc3Intent: Fdc3IntentLayerData | null;// Priority 3
+  dirtyValues: Record<string, unknown>;  // Priority 4
+
+  // Derived state
+  getDerivedValues: () => OrderStateData;  // Merges all layers
+  isDirty: () => boolean;
+  isFormValid: () => boolean;
+
+  // Validation state
+  errors: Record<string, string>;         // Client-side sync errors
+  serverErrors: Record<string, string>;   // Server-side async errors
+  warnings: Record<string, string>;       // Non-blocking warnings
+  refDataErrors: Record<string, string>;  // Missing accounts/pools
+  globalError: string | null;
+
+  // Actions
+  setFieldValue: (field, value) => void;
+  validateField: (field, value) => Promise<void>;
+  submitOrder: () => Promise<void>;
+  amendOrder: () => void;
+}
+```
+
+### How to Access Store
+
+```typescript
+// In components/hooks
+import { useOrderEntryStore } from "../store";
+
+// Select specific state
+const status = useOrderEntryStore((s) => s.status);
+const errors = useOrderEntryStore((s) => s.errors);
+
+// Select action
+const setFieldValue = useOrderEntryStore((s) => s.setFieldValue);
+const submitOrder = useOrderEntryStore((s) => s.submitOrder);
+
+// Get derived values
+const formValues = useOrderEntryStore((s) => s.getDerivedValues());
+```
+
+---
+
+## Testing Guide
+
+### Test File Locations
+
+All test files are co-located with source files:
+
+- `src/config/validation.spec.ts` - Tests `validation.ts`
+- `src/hooks/useFieldValue.spec.ts` - Tests `useFieldValue.ts`
+- `src/store/slices/createDerivedSlice.spec.ts` - Tests `createDerivedSlice.ts`
+
+### Test Naming Convention
+
+Use "expect X when Y" pattern:
+
+```typescript
+describe("validation", () => {
+  it("expect error when amount is below minimum", () => {
+    // Test code
+  });
+
+  it("expect valid when all required fields present", () => {
+    // Test code
+  });
+});
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run with coverage
+npm run test:coverage
+```
+
+### Writing a New Test
+
+**Example: Test a validation rule**
+
+```typescript
+// src/config/validation.spec.ts
+import { describe, expect, it } from "vitest";
+import { validateOrderForSubmission } from "./validation";
+import { OrderType } from "../types/domain";
+
+describe("validateOrderForSubmission", () => {
+  it("expect error when startMode is START_AT but startTime is missing", () => {
+    const order = {
+      currencyPair: "GBPUSD",
+      side: "BUY",
+      orderType: OrderType.FLOAT,
+      amount: { amount: 1000000, ccy: "GBP" },
+      startMode: "START_AT",
+      startDate: "2024-01-01",
+      timeZone: "America/New_York",
+      // startTime is missing!
+    };
+
+    const result = validateOrderForSubmission(order);
+
+    expect(result.valid).toBe(false);
+    expect(result.errors.startTime).toBe("Start time is required when Start Mode is 'Start At'");
+  });
 });
 ```
 
 ---
+
+## Debugging Tips
+
+### View Store State in Browser Console
+
+```javascript
+// In browser console (app must be running)
+window.__ORDER_STORE__.getState()
+```
+
+Returns entire store state - useful for debugging layer merging issues.
+
+### Check Derived Values
+
+```javascript
+window.__ORDER_STORE__.getState().getDerivedValues()
+```
+
+Shows final merged form values after applying all layers.
+
+### Check Validation State
+
+```javascript
+const state = window.__ORDER_STORE__.getState();
+console.log("Errors:", state.errors);
+console.log("Server Errors:", state.serverErrors);
+console.log("Warnings:", state.warnings);
+console.log("Ref Data Errors:", state.refDataErrors);
+```
+
+### Debug Field Visibility
+
+Add this to `ReorderableFieldList.tsx`:
+
+```typescript
+const visibleFields = useMemo(() => {
+  const values = getDerivedValues();
+  const filtered = fields.filter((fieldKey) => {
+    const isVisible = isFieldVisible(fieldKey, values);
+    console.log(`Field ${fieldKey}:`, isVisible ? "VISIBLE" : "HIDDEN");
+    return isVisible;
+  });
+  return filtered;
+}, [fields, orderType, expiry, startMode, liquidityPool]);
+```
+
+### Debug Validation Flow
+
+Add logging to `createValidationSlice.ts`:
+
+```typescript
+validateField: async <K extends keyof OrderStateData>(
+  field: K,
+  value: OrderStateData[K],
+  orderType: string
+) => {
+  console.log(`Validating ${String(field)}:`, value);
+
+  // ... validation logic
+
+  console.log(`Validation result for ${String(field)}:`, result);
+}
+```
+
+### Common Issues
+
+**Issue: Field not showing up**
+
+- Check `FIELD_REGISTRY` - is field registered?
+- Check `ORDER_TYPES[orderType].fields` - is field in list?
+- Check `visibilityRules.ts` - is field hidden by rule?
+
+**Issue: Field value not updating**
+
+- Check `setFieldValue` is called with correct field name
+- Check `getDerivedValues()` - is value in dirtyValues?
+- Check if field is read-only (viewing mode, not in editableFields)
+
+**Issue: Validation not working**
+
+- Check `SCHEMA_MAP` has schema for order type
+- Check field name matches schema definition
+- Check async validation - server might be returning different error
+
+**Issue: FDC3 intent not applying**
+
+- Check `Fdc3IntentSlice.fdc3Intent` - is intent stored?
+- Check `isDirty` - if true, confirmation dialog should show
+- Check `mapFdc3ToOrderData` - is mapping correct?
+
+---
+
+## Performance Tips
+
+### Optimize Store Selectors
+
+**Bad:**
+
+```typescript
+// Re-renders on ANY store change
+const store = useOrderEntryStore();
+const value = store.getDerivedValues().currencyPair;
+```
+
+**Good:**
+
+```typescript
+// Only re-renders when currencyPair changes
+const value = useOrderEntryStore((s) => s.getDerivedValues().currencyPair);
+```
+
+### Debounce Validation
+
+Validation is already debounced (300ms) in `useFieldState.ts`. Don't add extra debouncing.
+
+### Memoize Expensive Calculations
+
+```typescript
+const visibleFields = useMemo(() => {
+  return fields.filter((f) => isFieldVisible(f, formValues));
+}, [fields, formValues]);
+```
+
+---
+
+## Best Practices
+
+### 1. Never Mutate Store State Directly
+
+**Bad:**
+
+```typescript
+const state = useOrderEntryStore.getState();
+state.errors.currencyPair = "Invalid";  // DON'T DO THIS
+```
+
+**Good:**
+
+```typescript
+useOrderEntryStore.getState().setFieldError("currencyPair", "Invalid");
+```
+
+### 2. Use Type-Safe Field Names
+
+**Bad:**
+
+```typescript
+setFieldValue("curencyPair", "GBPUSD");  // Typo! Runtime error
+```
+
+**Good:**
+
+```typescript
+setFieldValue("currencyPair", "GBPUSD");  // TypeScript catches typos
+```
+
+### 3. Don't Hardcode Order Types
+
+**Bad:**
+
+```typescript
+if (values.orderType === "LIMIT") {  // String literal
+```
+
+**Good:**
+
+```typescript
+if (values.orderType === OrderType.TAKE_PROFIT) {  // Enum
+```
+
+### 4. Co-locate Tests with Source Files
+
+- `useFieldValue.ts` → `useFieldValue.spec.ts` (same directory)
+- Makes tests easy to find and maintain
+
+### 5. Use Configuration, Not Hardcoded Logic
+
+**Bad:**
+
+```typescript
+// Hardcoded in component
+if (orderType === "FLOAT") {
+  return <FloatSpecificField />;
+}
+```
+
+**Good:**
+
+```typescript
+// Defined in visibilityRules.ts
+floatSpecificField: (values) => values.orderType === OrderType.FLOAT
+```
 
 ---
 
 ## Further Reading
 
-- See `CODE_CHANGES.md` for refactoring history and all phases of development
-- See `TECHNICAL_IMPL.md` for implementation details
-- GraphQL schema: Backend GraphQL types
-- FDC3 Spec: <https://github.com/FINOS/fdc3-standard>
+- [FDC3 Intents Spec](https://fdc3.finos.org/docs/intents/spec)
+- [Zustand Documentation](https://zustand.docs.pmnd.rs/getting-started/introduction)
+- [Valibot Validation Library](https://valibot.dev/guides/introduction/)

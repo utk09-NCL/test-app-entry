@@ -200,6 +200,100 @@ describe("validation", () => {
       expect(result.valid).toBe(false);
       expect(result.errors.level).toBeDefined();
     });
+
+    it("expect error when startMode is START_AT but startTime is missing", () => {
+      const order = {
+        ...validTakeProfitOrder,
+        startMode: "START_AT",
+        startDate: "2024-01-01",
+        timeZone: "America/New_York",
+      };
+      const result = validateOrderForSubmission(order);
+      expect(result.valid).toBe(false);
+      expect(result.errors.startTime).toBe("Start time is required when Start Mode is 'Start At'");
+    });
+
+    it("expect error when startMode is START_AT but startDate is missing", () => {
+      const order = {
+        ...validTakeProfitOrder,
+        startMode: "START_AT",
+        startTime: "10:30:00",
+        timeZone: "America/New_York",
+      };
+      const result = validateOrderForSubmission(order);
+      expect(result.valid).toBe(false);
+      expect(result.errors.startDate).toBe("Start date is required when Start Mode is 'Start At'");
+    });
+
+    it("expect error when startMode is START_AT but timeZone is missing", () => {
+      const order = {
+        ...validTakeProfitOrder,
+        startMode: "START_AT",
+        startTime: "10:30:00",
+        startDate: "2024-01-01",
+      };
+      const result = validateOrderForSubmission(order);
+      expect(result.valid).toBe(false);
+      expect(result.errors.timeZone).toBe("Timezone is required when Start Mode is 'Start At'");
+    });
+
+    it("expect error when expiry strategy is GTD but expiryTime is missing", () => {
+      const order = {
+        ...validTakeProfitOrder,
+        expiry: { strategy: "GTD" },
+        expiryDate: "2024-12-31",
+        expiryTimeZone: "America/New_York",
+      };
+      const result = validateOrderForSubmission(order);
+      expect(result.valid).toBe(false);
+      expect(result.errors.expiryTime).toBe("Expiry time is required for GTD/GTT orders");
+    });
+
+    it("expect error when expiry strategy is GTD but expiryDate is missing", () => {
+      const order = {
+        ...validTakeProfitOrder,
+        expiry: { strategy: "GTD" },
+        expiryTime: "16:00:00",
+        expiryTimeZone: "America/New_York",
+      };
+      const result = validateOrderForSubmission(order);
+      expect(result.valid).toBe(false);
+      expect(result.errors.expiryDate).toBe("Expiry date is required for GTD/GTT orders");
+    });
+
+    it("expect error when expiry strategy is GTD but expiryTimeZone is missing", () => {
+      const order = {
+        ...validTakeProfitOrder,
+        expiry: { strategy: "GTD" },
+        expiryTime: "16:00:00",
+        expiryDate: "2024-12-31",
+      };
+      const result = validateOrderForSubmission(order);
+      expect(result.valid).toBe(false);
+      expect(result.errors.expiryTimeZone).toBe("Expiry timezone is required for GTD/GTT orders");
+    });
+
+    it("expect error when expiry strategy is GTT but expiryTime is missing", () => {
+      const order = {
+        ...validTakeProfitOrder,
+        expiry: { strategy: "GTT" },
+        expiryDate: "2024-12-31",
+        expiryTimeZone: "America/New_York",
+      };
+      const result = validateOrderForSubmission(order);
+      expect(result.valid).toBe(false);
+      expect(result.errors.expiryTime).toBe("Expiry time is required for GTD/GTT orders");
+    });
+
+    it("expect valid when expiry strategy is GTC", () => {
+      const order = {
+        ...validTakeProfitOrder,
+        expiry: { strategy: "GTC" },
+      };
+      const result = validateOrderForSubmission(order);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual({});
+    });
   });
 
   describe("validateField", () => {

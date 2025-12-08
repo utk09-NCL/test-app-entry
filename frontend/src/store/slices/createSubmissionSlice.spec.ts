@@ -106,7 +106,7 @@ describe("createSubmissionSlice", () => {
         expect(mockState.status).toBe("READY");
         expect(mockState.toastMessage).toEqual({
           type: "error",
-          text: "Please fix validation errors.",
+          text: "notional: Notional is required",
         });
       });
 
