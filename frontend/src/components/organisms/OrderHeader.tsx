@@ -112,7 +112,6 @@ export const OrderHeader = () => {
 
       {/* Live Price Feed */}
       {/* Shows real-time BUY and SELL prices for the selected currencyPair */}
-      {/* // TODO (Phase 5): This will subscribe to WebSocket price updates */}
       <TickingPrice symbol={currencyPair} />
     </>
   );

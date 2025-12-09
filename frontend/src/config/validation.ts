@@ -355,6 +355,61 @@ export const mapIssuesToErrors = (
   return errors;
 };
 
+// ============================================================================
+// COMPOSABLE VALIDATORS (for reusable custom validation logic)
+// ============================================================================
+
+/**
+ * Validate startMode-related fields.
+ * When startMode is "START_AT", requires startTime, startDate, and timeZone.
+ */
+export const validateStartModeFields = (
+  values: Record<string, unknown>
+): Record<string, string> => {
+  const errors: Record<string, string> = {};
+
+  if (values.startMode === "START_AT") {
+    if (!values.startTime || values.startTime === "") {
+      errors.startTime = "Start time is required when Start Mode is 'Start At'";
+    }
+    if (!values.startDate || values.startDate === "") {
+      errors.startDate = "Start date is required when Start Mode is 'Start At'";
+    }
+    if (!values.timeZone || values.timeZone === "") {
+      errors.timeZone = "Timezone is required when Start Mode is 'Start At'";
+    }
+  }
+
+  return errors;
+};
+
+/**
+ * Validate expiry-related fields.
+ * When expiry strategy is GTD or GTT, requires expiryTime, expiryDate, and expiryTimeZone.
+ */
+export const validateExpiryFields = (values: Record<string, unknown>): Record<string, string> => {
+  const errors: Record<string, string> = {};
+  const expiry = values.expiry as { strategy?: string } | undefined;
+
+  if (expiry?.strategy === "GTD" || expiry?.strategy === "GTT") {
+    if (!values.expiryTime || values.expiryTime === "") {
+      errors.expiryTime = "Expiry time is required for GTD/GTT orders";
+    }
+    if (!values.expiryDate || values.expiryDate === "") {
+      errors.expiryDate = "Expiry date is required for GTD/GTT orders";
+    }
+    if (!values.expiryTimeZone || values.expiryTimeZone === "") {
+      errors.expiryTimeZone = "Expiry timezone is required for GTD/GTT orders";
+    }
+  }
+
+  return errors;
+};
+
+// ============================================================================
+// FULL ORDER VALIDATION
+// ============================================================================
+
 /**
  * Validate an order for submission.
  * Runs full schema validation and returns field-level errors.
@@ -380,33 +435,11 @@ export const validateOrderForSubmission = (values: Record<string, unknown>): Val
     return { valid: false, errors };
   }
 
-  // Custom validation: if startMode is "START_AT", require startTime, startDate, timeZone
+  // Custom validation using composable validators
   const errors: Record<string, string> = {};
-  if (values.startMode === "START_AT") {
-    if (!values.startTime || values.startTime === "") {
-      errors.startTime = "Start time is required when Start Mode is 'Start At'";
-    }
-    if (!values.startDate || values.startDate === "") {
-      errors.startDate = "Start date is required when Start Mode is 'Start At'";
-    }
-    if (!values.timeZone || values.timeZone === "") {
-      errors.timeZone = "Timezone is required when Start Mode is 'Start At'";
-    }
-  }
 
-  // Custom validation: if expiry strategy is GTD or GTT, require expiryTime, expiryDate, expiryTimeZone
-  const expiry = values.expiry as { strategy?: string } | undefined;
-  if (expiry?.strategy === "GTD" || expiry?.strategy === "GTT") {
-    if (!values.expiryTime || values.expiryTime === "") {
-      errors.expiryTime = "Expiry time is required for GTD/GTT orders";
-    }
-    if (!values.expiryDate || values.expiryDate === "") {
-      errors.expiryDate = "Expiry date is required for GTD/GTT orders";
-    }
-    if (!values.expiryTimeZone || values.expiryTimeZone === "") {
-      errors.expiryTimeZone = "Expiry timezone is required for GTD/GTT orders";
-    }
-  }
+  Object.assign(errors, validateStartModeFields(values));
+  Object.assign(errors, validateExpiryFields(values));
 
   if (Object.keys(errors).length > 0) {
     return { valid: false, errors };

@@ -62,7 +62,7 @@ export interface AppSlice {
   /** Set order status (from subscription) */
   setOrderStatus: (status: string | null) => void;
   /** Global toast notification (null = no toast) */
-  toastMessage: { type: "success" | "error" | "info"; text: string } | null;
+  toastMessage: { type: "success" | "error" | "info" | "warning"; text: string } | null;
   /** Show toast message */
   setToast: (msg: { type: "success" | "error" | "info"; text: string } | null) => void;
 }
@@ -145,6 +145,8 @@ export interface ValidationSlice {
   ) => Promise<void>;
   /** Validate reference data (check if field values exist in server response) */
   validateRefData: () => void;
+  /** Clear validation state for all fields */
+  cancelAllValidations: () => void;
   /** Set global error message */
   setGlobalError: (error: string | null) => void;
   /** Clear all validation state */
@@ -175,8 +177,12 @@ export interface PriceSlice {
   currentBuyPrice: number;
   /** Current sell price (bid) */
   currentSellPrice: number;
+  /** Auto-grab checkbox state (for FLOAT order type) */
+  autoGrabPrice: boolean;
   /** Update both buy and sell prices atomically */
   setCurrentPrices: (buyPrice: number, sellPrice: number) => void;
+  /** Toggle auto-grab price checkbox */
+  setAutoGrabPrice: (enabled: boolean) => void;
 }
 
 /**

@@ -744,6 +744,42 @@ describe("createValidationSlice", () => {
     });
   });
 
+  describe("cancelAllValidations", () => {
+    it("expect all validation errors to be cleared", () => {
+      mockState.errors = { level: "Error" };
+      mockState.serverErrors = { currencyPair: "Server error" };
+      mockState.warnings = { account: "Warning" };
+      mockState.refDataErrors = { orderType: "Ref data error" };
+      mockState.isValidating = { level: true };
+
+      slice.cancelAllValidations();
+
+      expect(mockState.errors).toEqual({});
+      expect(mockState.serverErrors).toEqual({});
+      expect(mockState.warnings).toEqual({});
+      expect(mockState.refDataErrors).toEqual({});
+      expect(mockState.isValidating).toEqual({});
+    });
+
+    it("expect validationRequestIds to be preserved", () => {
+      mockState.validationRequestIds = { level: 5, currencyPair: 3 };
+      mockState.errors = { level: "Error" };
+
+      slice.cancelAllValidations();
+
+      // validationRequestIds should NOT be cleared (they prevent stale validations)
+      expect(mockState.validationRequestIds).toEqual({ level: 5, currencyPair: 3 });
+    });
+
+    it("expect set to be called when cancelling validations", () => {
+      mockState.errors = { level: "Error" };
+
+      slice.cancelAllValidations();
+
+      expect(set).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("clearValidationState", () => {
     it("expect all validation state to be cleared", () => {
       mockState.errors = { level: "Error" };

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import { PRICE_CONFIG } from "../../config/constants";
 import { useOrderEntryStore } from "../../store";
@@ -57,8 +57,9 @@ export const LimitPriceWithCheckbox = ({
   name,
   direction,
 }: LimitPriceWithCheckboxProps) => {
-  // Track whether "Grab" checkbox is checked
-  const [autoGrab, setAutoGrab] = useState(false);
+  // Get auto-grab state from store
+  const autoGrab = useOrderEntryStore((s) => s.autoGrabPrice);
+  const setAutoGrab = useOrderEntryStore((s) => s.setAutoGrabPrice);
 
   // Subscribe to current market prices from store
   // These are updated by the TickingPrice component

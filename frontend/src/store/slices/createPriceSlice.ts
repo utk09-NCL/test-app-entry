@@ -41,6 +41,12 @@ export const createPriceSlice: StateCreator<
   currentSellPrice: 1.27325,
 
   /**
+   * Auto-grab checkbox state (for FLOAT order type).
+   * When true, limit price automatically updates with market price.
+   */
+  autoGrabPrice: false,
+
+  /**
    * Update both buy and sell prices atomically.
    * Called by TickingPrice every tick interval.
    */
@@ -48,5 +54,14 @@ export const createPriceSlice: StateCreator<
     set((state) => {
       state.currentBuyPrice = buyPrice;
       state.currentSellPrice = sellPrice;
+    }),
+
+  /**
+   * Toggle auto-grab price checkbox.
+   * Used by LimitPriceWithCheckbox component.
+   */
+  setAutoGrabPrice: (enabled) =>
+    set((state) => {
+      state.autoGrabPrice = enabled;
     }),
 });

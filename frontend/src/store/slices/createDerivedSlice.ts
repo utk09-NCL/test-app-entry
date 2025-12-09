@@ -17,6 +17,22 @@ import { StateCreator } from "zustand";
 import { OrderStateData } from "../../types/domain";
 import { BoundState, DerivedSlice } from "../../types/store";
 
+/**
+ * Helper to merge defined values from a source into target.
+ * Only copies values that are not undefined.
+ *
+ * @param target - Object to merge into
+ * @param source - Object to merge from
+ */
+const mergeDefined = (target: Partial<OrderStateData>, source: Partial<OrderStateData>): void => {
+  Object.keys(source).forEach((key) => {
+    const value = source[key as keyof OrderStateData];
+    if (value !== undefined) {
+      (target as Record<string, unknown>)[key] = value;
+    }
+  });
+};
+
 export const createDerivedSlice: StateCreator<
   BoundState,
   [["zustand/immer", never]],
@@ -71,26 +87,14 @@ export const createDerivedSlice: StateCreator<
     }
 
     // Apply FDC3 intent data (Priority 3)
+    // Higher priority than user prefs, lower than user input
     if (fdc3Intent) {
-      if (fdc3Intent.currencyPair !== undefined) merged.currencyPair = fdc3Intent.currencyPair;
-      if (fdc3Intent.side !== undefined) merged.side = fdc3Intent.side as OrderStateData["side"];
-      if (fdc3Intent.orderType !== undefined)
-        merged.orderType = fdc3Intent.orderType as OrderStateData["orderType"];
-      if (fdc3Intent.amount !== undefined) merged.amount = fdc3Intent.amount;
-      if (fdc3Intent.level !== undefined) merged.level = fdc3Intent.level;
-      if (fdc3Intent.account !== undefined) merged.account = fdc3Intent.account;
-      if (fdc3Intent.liquidityPool !== undefined) merged.liquidityPool = fdc3Intent.liquidityPool;
-      if (fdc3Intent.orderId !== undefined) merged.orderId = fdc3Intent.orderId;
+      mergeDefined(merged, fdc3Intent as Partial<OrderStateData>);
     }
 
     // Apply user input (Priority 4 - highest)
-    // User edits always win
-    Object.keys(userInput).forEach((key) => {
-      const value = userInput[key as keyof OrderStateData];
-      if (value !== undefined) {
-        (merged as Record<string, unknown>)[key] = value;
-      }
-    });
+    // User edits always win - they override everything
+    mergeDefined(merged, userInput);
 
     // Add execution status if available (for display)
     const executionStatus = get().orderStatus;

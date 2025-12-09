@@ -119,64 +119,50 @@ const buildAmendOrderVariables = (values: OrderStateData) => ({
  * Executes the CREATE order mutation.
  */
 const executeCreateOrder = async (values: OrderStateData): Promise<MutationResult> => {
-  return new Promise((resolve, reject) => {
-    const variables = buildCreateOrderVariables(values);
+  const variables = buildCreateOrderVariables(values);
 
-    graphqlClient
-      .mutate<CreateOrderResponse>({
-        mutation: CREATE_ORDER_MUTATION,
-        variables,
-      })
-      .then((result) => {
-        const response = result.data?.createOrder;
-        if (response?.result === "SUCCESS" && response.orderId) {
-          resolve({
-            success: true,
-            orderId: response.orderId,
-          });
-        } else {
-          resolve({
-            success: false,
-            failureReason: response?.failureReason || "Order submission failed",
-          });
-        }
-      })
-      .catch((error) => {
-        reject(error);
-      });
+  const result = await graphqlClient.mutate<CreateOrderResponse>({
+    mutation: CREATE_ORDER_MUTATION,
+    variables,
   });
+
+  const response = result.data?.createOrder;
+  if (response?.result === "SUCCESS" && response.orderId) {
+    return {
+      success: true,
+      orderId: response.orderId,
+    };
+  }
+
+  return {
+    success: false,
+    failureReason: response?.failureReason || "Order submission failed",
+  };
 };
 
 /**
  * Executes the AMEND order mutation.
  */
 const executeAmendOrder = async (values: OrderStateData): Promise<MutationResult> => {
-  return new Promise((resolve, reject) => {
-    const variables = buildAmendOrderVariables(values);
+  const variables = buildAmendOrderVariables(values);
 
-    graphqlClient
-      .mutate<AmendOrderResponse>({
-        mutation: AMEND_ORDER_MUTATION,
-        variables,
-      })
-      .then((result) => {
-        const response = result.data?.amendOrder;
-        if (response?.result === "SUCCESS") {
-          resolve({
-            success: true,
-            orderId: response.orderId,
-          });
-        } else {
-          resolve({
-            success: false,
-            failureReason: response?.failureReason || "Amendment failed",
-          });
-        }
-      })
-      .catch((error) => {
-        reject(error);
-      });
+  const result = await graphqlClient.mutate<AmendOrderResponse>({
+    mutation: AMEND_ORDER_MUTATION,
+    variables,
   });
+
+  const response = result.data?.amendOrder;
+  if (response?.result === "SUCCESS") {
+    return {
+      success: true,
+      orderId: response.orderId,
+    };
+  }
+
+  return {
+    success: false,
+    failureReason: response?.failureReason || "Amendment failed",
+  };
 };
 
 // ============================================================================

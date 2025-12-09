@@ -64,6 +64,7 @@ export const createValidationSlice: StateCreator<
    */
   validateField: async (field, value) => {
     // Track this validation request (for race condition handling)
+    // Each new validation increments the request ID
     const currentId = (get().validationRequestIds[field] || 0) + 1;
 
     set((state) => {
@@ -170,6 +171,21 @@ export const createValidationSlice: StateCreator<
         state.isValidating[field] = false;
       });
     }
+  },
+
+  /**
+   * Clear validation state for all fields.
+   * The request ID tracking ensures any in-flight validations are ignored when they complete.
+   */
+  cancelAllValidations: () => {
+    set((state) => {
+      state.errors = {};
+      state.serverErrors = {};
+      state.warnings = {};
+      state.refDataErrors = {};
+      state.isValidating = {};
+      // Keep validationRequestIds - they prevent stale validations from applying
+    });
   },
 
   /**

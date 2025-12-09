@@ -59,7 +59,12 @@ interface FieldRendererProps {
   rowIndex?: number;
 }
 
-export const FieldRenderer = ({ fieldKey, rowIndex }: FieldRendererProps) => {
+/**
+ * FieldRenderer with React.memo for performance optimization.
+ * Prevents re-renders when props haven't changed.
+ * Critical for forms with many fields (10-15+ fields per order type).
+ */
+export const FieldRenderer = React.memo(({ fieldKey, rowIndex }: FieldRendererProps) => {
   // ===== Hooks (must be called unconditionally) =====
   const { value, setValue } = useFieldValue(fieldKey);
   const { options, isLoading } = useFieldOptions(fieldKey);
@@ -370,4 +375,7 @@ export const FieldRenderer = ({ fieldKey, rowIndex }: FieldRendererProps) => {
       />
     </RowComponent>
   );
-};
+});
+
+// Display name for React DevTools
+FieldRenderer.displayName = "FieldRenderer";

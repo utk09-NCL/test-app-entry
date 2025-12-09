@@ -66,24 +66,25 @@ export interface FieldOrderSlice {
 }
 
 /**
- * Get stored field orders from localStorage
+ * Get stored field orders from localStorage with fallback
  */
-const getStoredFieldOrders = (): FieldOrderMap => {
+const getStoredFieldOrders = (): { orders: FieldOrderMap; hasError: boolean } => {
   try {
     const stored = localStorage.getItem(FIELD_ORDER_KEY);
     if (stored) {
-      return JSON.parse(stored) as FieldOrderMap;
+      return { orders: JSON.parse(stored) as FieldOrderMap, hasError: false };
     }
   } catch (e) {
     console.error("[FieldOrderSlice] Failed to parse stored field orders:", e);
+    return { orders: {}, hasError: true };
   }
-  return {};
+  return { orders: {}, hasError: false };
 };
 
 /**
  * Save field orders to localStorage and dispatch StorageEvent for same-tab sync
  */
-const saveFieldOrders = (orders: FieldOrderMap): void => {
+const saveFieldOrders = (orders: FieldOrderMap): { success: boolean; error?: string } => {
   try {
     const oldValue = localStorage.getItem(FIELD_ORDER_KEY);
     const newValue = JSON.stringify(orders);
@@ -98,8 +99,11 @@ const saveFieldOrders = (orders: FieldOrderMap): void => {
         storageArea: localStorage,
       })
     );
+    return { success: true };
   } catch (e) {
     console.error("[FieldOrderSlice] Failed to save field orders:", e);
+    const errorMsg = e instanceof Error ? e.message : "Unknown error";
+    return { success: false, error: errorMsg };
   }
 };
 
@@ -156,9 +160,18 @@ export const createFieldOrderSlice: StateCreator<
    */
   initFieldOrderFromStorage: () => {
     set((state) => {
-      state.fieldOrders = getStoredFieldOrders();
+      const { orders, hasError } = getStoredFieldOrders();
+      state.fieldOrders = orders;
       state.draftFieldOrders = {};
       state.isReorderMode = getReorderModeEnabled();
+
+      // Notify user if localStorage failed
+      if (hasError) {
+        state.toastMessage = {
+          type: "warning",
+          text: "Field ordering preferences could not be loaded. Using defaults.",
+        };
+      }
     });
   },
 

@@ -30,7 +30,7 @@ export const useOrderTracking = () => {
   const setToast = useOrderEntryStore((s) => s.setToast);
 
   // Subscribe to order data updates
-  const { data: orderData } = useSubscription<OrderDataSubscriptionResponse>(ORDER_SUBSCRIPTION, {
+  const orderSubscription = useSubscription<OrderDataSubscriptionResponse>(ORDER_SUBSCRIPTION, {
     variables: { orderId: currentOrderId },
     skip: !currentOrderId, // Don't subscribe if no orderId
     fetchPolicy: "no-cache",
@@ -42,9 +42,10 @@ export const useOrderTracking = () => {
       });
     },
   });
+  const { data: orderData } = orderSubscription;
 
   // Subscribe to order failures
-  const { data: orderFailureData } = useSubscription<OrderFailureSubscriptionResponse>(
+  const orderFailureSubscription = useSubscription<OrderFailureSubscriptionResponse>(
     ORDER_FAILURE_SUBSCRIPTION,
     {
       variables: { orderId: currentOrderId },
@@ -55,6 +56,18 @@ export const useOrderTracking = () => {
       },
     }
   );
+  const { data: orderFailureData } = orderFailureSubscription;
+
+  // Cleanup subscriptions on unmount
+  useEffect(() => {
+    return () => {
+      // Apollo Client handles subscription cleanup automatically
+      // but we explicitly log for verification
+      if (currentOrderId) {
+        console.log("[useOrderTracking] Cleaning up subscriptions for order:", currentOrderId);
+      }
+    };
+  }, [currentOrderId]);
 
   // Update order status when data arrives
   useEffect(() => {

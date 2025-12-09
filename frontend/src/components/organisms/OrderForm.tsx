@@ -29,6 +29,7 @@
  */
 
 import { useCallback } from "react";
+import React from "react";
 
 import { ORDER_TYPES } from "../../config/orderConfig";
 import { useFieldOrder } from "../../hooks/useFieldOrder";
@@ -44,7 +45,11 @@ import { OrderFooter } from "./OrderFooter";
 
 import styles from "./OrderForm.module.scss";
 
-export const OrderForm = () => {
+/**
+ * OrderForm with React.memo for performance optimization.
+ * Prevents unnecessary re-renders of the entire form structure.
+ */
+export const OrderForm = React.memo(() => {
   // Get the merged order data (baseValues + dirtyValues)
   // orderType determines which fields are visible
   const orderType = useOrderEntryStore((s) => s.getDerivedValues().orderType);
@@ -139,4 +144,7 @@ export const OrderForm = () => {
       <OrderFooter />
     </div>
   );
-};
+});
+
+// Display name for React DevTools
+OrderForm.displayName = "OrderForm";
