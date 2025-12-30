@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 import { useSubscription } from "@apollo/client";
 
 import { PRICE_CONFIG } from "../../config/constants";
@@ -45,15 +43,15 @@ export interface PriceData {
  * ```
  */
 export const TickingPrice = ({ symbol }: TickingPriceProps) => {
-  // Local state for buy/sell prices
-  const [buyPrice, setBuyPrice] = useState<number>(PRICE_CONFIG.INITIAL_BUY_PRICE);
-  const [sellPrice, setSellPrice] = useState<number>(PRICE_CONFIG.INITIAL_SELL_PRICE);
+  // Read prices from store (single source of truth)
+  const buyPrice = useOrderEntryStore((s) => s.currentBuyPrice);
+  const sellPrice = useOrderEntryStore((s) => s.currentSellPrice);
 
   // Get current currency pair from store to determine NDF/Onshore status
   const currencyPairs = useOrderEntryStore((s) => s.currencyPairs);
   const currentPair = currencyPairs.find((cp) => cp.symbol === symbol);
 
-  // Action to update prices in store (used by LimitPriceWithCheckbox)
+  // Action to update prices in store
   const setCurrentPrices = useOrderEntryStore((s) => s.setCurrentPrices);
 
   /**
@@ -79,8 +77,6 @@ export const TickingPrice = ({ symbol }: TickingPriceProps) => {
       if (payload?.gatorData) {
         const newBuyPrice = payload.gatorData.topOfTheBookBuy.precisionValue;
         const newSellPrice = payload.gatorData.topOfTheBookSell.precisionValue;
-        setBuyPrice(newBuyPrice);
-        setSellPrice(newSellPrice);
         setCurrentPrices(newBuyPrice, newSellPrice);
       }
     },

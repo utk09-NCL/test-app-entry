@@ -35,7 +35,7 @@ import { Fdc3IntentSlice } from "../store/slices/createFdc3IntentSlice";
 import { FieldOrderSlice } from "../store/slices/createFieldOrderSlice";
 import { UserPrefsSlice } from "../store/slices/createUserPrefsSlice";
 
-import { Account, CurrencyPair, LiquidityPool, OrderStateData } from "./domain";
+import { Account, CurrencyPair, LiquidityPool, OrderSide, OrderStateData } from "./domain";
 
 // --- Slice Interfaces ---
 
@@ -170,19 +170,19 @@ export interface SubmissionSlice {
 export type ComputedSlice = DerivedSlice & ValidationSlice & SubmissionSlice;
 
 /**
- * Price Slice - Current market prices.
+ * Price Slice - Current market prices and auto-grab tracking.
  */
 export interface PriceSlice {
-  /** Current buy price (ask) */
+  /** Current buy price (ask) - 0 when not available */
   currentBuyPrice: number;
-  /** Current sell price (bid) */
+  /** Current sell price (bid) - 0 when not available */
   currentSellPrice: number;
-  /** Auto-grab checkbox state (for FLOAT order type) */
-  autoGrabPrice: boolean;
+  /** Last side that auto-grab used (for tracking side changes) */
+  lastGrabbedSide: OrderSide | null;
   /** Update both buy and sell prices atomically */
   setCurrentPrices: (buyPrice: number, sellPrice: number) => void;
-  /** Toggle auto-grab price checkbox */
-  setAutoGrabPrice: (enabled: boolean) => void;
+  /** Update the last grabbed side (called when side changes) */
+  setLastGrabbedSide: (side: OrderSide | null) => void;
 }
 
 /**

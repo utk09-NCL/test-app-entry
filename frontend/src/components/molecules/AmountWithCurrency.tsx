@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 import { AMOUNT_CONFIG } from "../../config/constants";
 import { Input } from "../atoms/Input";
 
@@ -25,6 +23,10 @@ interface AmountWithCurrencyProps {
   id?: string;
   /** Name attribute for the input */
   name?: string;
+  /** Currently selected currency (controlled) */
+  selectedCurrency: string;
+  /** Callback when currency changes */
+  onCurrencyChange: (ccy: string) => void;
 }
 
 /**
@@ -59,21 +61,12 @@ export const AmountWithCurrency = ({
   ccy2,
   id,
   name,
+  selectedCurrency,
+  onCurrencyChange,
 }: AmountWithCurrencyProps) => {
-  // Initialize with ccy1 (base currency)
-  const [selectedCurrency, setSelectedCurrency] = useState<string>(() => ccy1);
-
   // Validate that selected currency is still valid (in case symbol changed)
-  // This uses derived state pattern instead of useEffect to avoid cascading renders
   const validCurrency =
     selectedCurrency === ccy1 || selectedCurrency === ccy2 ? selectedCurrency : ccy1;
-
-  // If currency is invalid (e.g., symbol changed), reset to ccy1 during render
-  // React allows setState during render if the new state is derived from props
-  if (validCurrency !== selectedCurrency) {
-    console.log("[AmountWithCurrency] Resetting to valid currency:", validCurrency);
-    setSelectedCurrency(validCurrency);
-  }
 
   /**
    * Toggle between base and quote currency.
@@ -81,11 +74,7 @@ export const AmountWithCurrency = ({
    */
   const handleCurrencyToggle = () => {
     const newCurrency = validCurrency === ccy1 ? ccy2 : ccy1;
-    console.log("[AmountWithCurrency] Toggle clicked:", {
-      from: validCurrency,
-      to: newCurrency,
-    });
-    setSelectedCurrency(newCurrency);
+    onCurrencyChange(newCurrency);
   };
 
   return (

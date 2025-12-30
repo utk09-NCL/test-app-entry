@@ -28,6 +28,8 @@ interface RowProps {
   isEditable?: boolean;
   /** Callback when label is double-clicked (triggers amend mode) */
   onDoubleClick?: () => void;
+  /** Whether the field is in auto-grab mode (shows visual indicator) */
+  isAutoGrab?: boolean;
 }
 
 /**
@@ -66,6 +68,7 @@ export const RowComponent = ({
   rowIndex,
   isEditable,
   onDoubleClick,
+  isAutoGrab,
 }: RowProps) => {
   // Generate test ID from fieldKey or label for component testing
   const testId = fieldKey || label.toLowerCase().replace(/\s+/g, "-");
@@ -106,6 +109,15 @@ export const RowComponent = ({
           id={labelId}
         >
           {label}
+          {isAutoGrab && (
+            <span
+              className={styles.autoGrabIndicator}
+              title="Auto-updating with market price"
+              data-testid={`auto-grab-${testId}`}
+            >
+              ⟳
+            </span>
+          )}
         </label>
         {isValidating && <Spinner size="sm" data-testid={`spinner-${testId}`} />}
       </div>

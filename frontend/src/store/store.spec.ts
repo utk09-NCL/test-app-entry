@@ -96,10 +96,11 @@ describe("Zustand Store Integration", () => {
   });
 
   describe("PriceSlice", () => {
-    it("expect initial prices to be set when store is created", () => {
+    it("expect initial prices to be 0 for auto-grab feature", () => {
+      // Initial prices are 0 - actual prices come from WebSocket/GraphQL subscription
       const { currentBuyPrice, currentSellPrice } = useOrderEntryStore.getState();
-      expect(currentBuyPrice).toBeGreaterThan(0);
-      expect(currentSellPrice).toBeGreaterThan(0);
+      expect(currentBuyPrice).toBe(0);
+      expect(currentSellPrice).toBe(0);
     });
 
     it("expect prices to update when setCurrentPrices is called", () => {
@@ -242,6 +243,35 @@ describe("Zustand Store Integration", () => {
 
       const { errors } = useOrderEntryStore.getState();
       expect(errors.level).toBeUndefined();
+    });
+
+    it("expect amount with currency to be stored as object", () => {
+      const store = useOrderEntryStore.getState();
+      store.setFieldValue("amount", { amount: 500000, ccy: "GBP" });
+
+      const { dirtyValues } = useOrderEntryStore.getState();
+      expect(dirtyValues.amount).toEqual({ amount: 500000, ccy: "GBP" });
+    });
+
+    it("expect currency change to update amount object correctly", () => {
+      const store = useOrderEntryStore.getState();
+      // Set initial amount with GBP
+      store.setFieldValue("amount", { amount: 1000000, ccy: "GBP" });
+
+      // Change currency to USD (simulating toggle click)
+      store.setFieldValue("amount", { amount: 1000000, ccy: "USD" });
+
+      const { dirtyValues } = useOrderEntryStore.getState();
+      expect(dirtyValues.amount).toEqual({ amount: 1000000, ccy: "USD" });
+    });
+
+    it("expect getDerivedValues to reflect currency change in amount", () => {
+      const store = useOrderEntryStore.getState();
+      store.setFieldValue("amount", { amount: 750000, ccy: "USD" });
+
+      const derived = store.getDerivedValues();
+      expect(derived.amount?.amount).toBe(750000);
+      expect(derived.amount?.ccy).toBe("USD");
     });
   });
 

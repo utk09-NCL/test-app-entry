@@ -9,13 +9,30 @@
  *
  * Higher priority values override lower priority values.
  *
+ * Auto-Grab Level Feature:
+ * - When conditions are met, level is computed from current ticking price
+ * - BUY side uses currentBuyPrice (ask), SELL side uses currentSellPrice (bid)
+ * - Stops when user manually edits level or FDC3 provides level
+ *
  * Used by: FieldRenderer (form display), ValidationSlice, SubmissionSlice.
  */
 
 import { StateCreator } from "zustand";
 
-import { OrderStateData } from "../../types/domain";
+import { OrderSide, OrderStateData, OrderType } from "../../types/domain";
 import { BoundState, DerivedSlice } from "../../types/store";
+
+/**
+ * Order types that have the level field visible.
+ * Used to determine if auto-grab should be active.
+ */
+const LEVEL_ORDER_TYPES: OrderType[] = [
+  OrderType.TAKE_PROFIT,
+  OrderType.STOP_LOSS,
+  OrderType.POUNCE,
+  OrderType.CALL_LEVEL,
+  OrderType.FLOAT,
+];
 
 /**
  * Helper to merge defined values from a source into target.
@@ -100,6 +117,31 @@ export const createDerivedSlice: StateCreator<
     const executionStatus = get().orderStatus;
     if (executionStatus && merged.execution) {
       // Note: execution is read-only from subscription, don't override
+    }
+
+    // ============================================
+    // AUTO-GRAB LEVEL COMPUTATION
+    // ============================================
+    // Compute level from ticking price when auto-grab conditions are met:
+    // 1. Order type has level field visible
+    // 2. User hasn't manually edited level (not in dirtyValues)
+    // 3. FDC3 hasn't provided level
+    // 4. Prices are available (> 0)
+    const currentBuyPrice = get().currentBuyPrice;
+    const currentSellPrice = get().currentSellPrice;
+    const orderType = merged.orderType as OrderType;
+    const side = merged.side as OrderSide;
+
+    const isLevelOrderType = LEVEL_ORDER_TYPES.includes(orderType);
+    const userHasNotEditedLevel = userInput.level === undefined;
+    const fdc3HasNoLevel = fdc3Intent?.level === undefined;
+    const pricesAvailable = currentBuyPrice > 0 && currentSellPrice > 0;
+
+    if (isLevelOrderType && userHasNotEditedLevel && fdc3HasNoLevel && pricesAvailable) {
+      // Auto-grab: set level based on side direction
+      // BUY orders use ask price (currentBuyPrice)
+      // SELL orders use bid price (currentSellPrice)
+      merged.level = side === OrderSide.BUY ? currentBuyPrice : currentSellPrice;
     }
 
     return merged as OrderStateData;

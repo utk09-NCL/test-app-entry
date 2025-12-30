@@ -25,7 +25,11 @@ describe("createUserInteractionSlice", () => {
       fn(mockState);
     }) as never;
 
-    get = vi.fn(() => mockState) as never;
+    // Mock get() to return the state plus the setLastGrabbedSide function
+    get = vi.fn(() => ({
+      ...mockState,
+      setLastGrabbedSide: vi.fn(),
+    })) as never;
 
     slice = createUserInteractionSlice(set, get, {} as never);
   });

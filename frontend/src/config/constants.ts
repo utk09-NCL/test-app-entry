@@ -14,10 +14,10 @@
  * Settings for price display and simulation in the TickingPrice component.
  */
 export const PRICE_CONFIG = {
-  /** Initial buy price for demo/simulation (e.g., GBP/USD rate) */
-  INITIAL_BUY_PRICE: 1.27345,
-  /** Initial sell price (typically slightly lower than buy) */
-  INITIAL_SELL_PRICE: 1.27115,
+  /** Initial buy price - 0 until real prices arrive from subscription */
+  INITIAL_BUY_PRICE: 0,
+  /** Initial sell price - 0 until real prices arrive from subscription */
+  INITIAL_SELL_PRICE: 0,
 
   /** How often prices update in milliseconds (1 second) */
   TICK_INTERVAL_MS: 1000,

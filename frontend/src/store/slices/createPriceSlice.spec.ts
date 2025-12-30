@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { OrderSide } from "../../types/domain";
 import type { BoundState, PriceSlice } from "../../types/store";
 
 import { createPriceSlice } from "./createPriceSlice";
@@ -14,9 +15,9 @@ describe("createPriceSlice", () => {
     vi.clearAllMocks();
 
     mockState = {
-      currentBuyPrice: 1.27345,
-      currentSellPrice: 1.27325,
-      autoGrabPrice: false,
+      currentBuyPrice: 0,
+      currentSellPrice: 0,
+      lastGrabbedSide: null,
     };
 
     set = vi.fn((fn: (state: Partial<BoundState>) => void) => {
@@ -29,16 +30,16 @@ describe("createPriceSlice", () => {
   });
 
   describe("initial state", () => {
-    it("expect currentBuyPrice to be initialized", () => {
-      expect(slice.currentBuyPrice).toBe(1.27345);
+    it("expect currentBuyPrice to be 0 initially", () => {
+      expect(slice.currentBuyPrice).toBe(0);
     });
 
-    it("expect currentSellPrice to be initialized", () => {
-      expect(slice.currentSellPrice).toBe(1.27325);
+    it("expect currentSellPrice to be 0 initially", () => {
+      expect(slice.currentSellPrice).toBe(0);
     });
 
-    it("expect autoGrabPrice to be false initially", () => {
-      expect(slice.autoGrabPrice).toBe(false);
+    it("expect lastGrabbedSide to be null initially", () => {
+      expect(slice.lastGrabbedSide).toBeNull();
     });
   });
 
@@ -71,38 +72,48 @@ describe("createPriceSlice", () => {
     });
   });
 
-  describe("setAutoGrabPrice", () => {
-    it("expect autoGrabPrice to be set to true", () => {
-      slice.setAutoGrabPrice(true);
+  describe("setLastGrabbedSide", () => {
+    it("expect lastGrabbedSide to be set to BUY", () => {
+      slice.setLastGrabbedSide(OrderSide.BUY);
 
-      expect(mockState.autoGrabPrice).toBe(true);
+      expect(mockState.lastGrabbedSide).toBe(OrderSide.BUY);
     });
 
-    it("expect autoGrabPrice to be set to false", () => {
-      mockState.autoGrabPrice = true;
+    it("expect lastGrabbedSide to be set to SELL", () => {
+      slice.setLastGrabbedSide(OrderSide.SELL);
 
-      slice.setAutoGrabPrice(false);
-
-      expect(mockState.autoGrabPrice).toBe(false);
+      expect(mockState.lastGrabbedSide).toBe(OrderSide.SELL);
     });
 
-    it("expect set to be called when autoGrabPrice is toggled", () => {
-      slice.setAutoGrabPrice(true);
+    it("expect lastGrabbedSide to be set to null", () => {
+      mockState.lastGrabbedSide = OrderSide.BUY;
+
+      slice.setLastGrabbedSide(null);
+
+      expect(mockState.lastGrabbedSide).toBeNull();
+    });
+
+    it("expect set to be called when lastGrabbedSide is changed", () => {
+      slice.setLastGrabbedSide(OrderSide.BUY);
 
       expect(set).toHaveBeenCalledTimes(1);
     });
 
-    it("expect autoGrabPrice to toggle correctly", () => {
-      // Start false
-      expect(mockState.autoGrabPrice).toBe(false);
+    it("expect lastGrabbedSide to toggle correctly between BUY and SELL", () => {
+      // Start null
+      expect(mockState.lastGrabbedSide).toBeNull();
 
-      // Toggle to true
-      slice.setAutoGrabPrice(true);
-      expect(mockState.autoGrabPrice).toBe(true);
+      // Set to BUY
+      slice.setLastGrabbedSide(OrderSide.BUY);
+      expect(mockState.lastGrabbedSide).toBe(OrderSide.BUY);
 
-      // Toggle back to false
-      slice.setAutoGrabPrice(false);
-      expect(mockState.autoGrabPrice).toBe(false);
+      // Change to SELL
+      slice.setLastGrabbedSide(OrderSide.SELL);
+      expect(mockState.lastGrabbedSide).toBe(OrderSide.SELL);
+
+      // Reset to null
+      slice.setLastGrabbedSide(null);
+      expect(mockState.lastGrabbedSide).toBeNull();
     });
   });
 });

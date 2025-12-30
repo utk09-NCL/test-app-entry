@@ -42,7 +42,13 @@ import {
   useFieldVisibility,
 } from "../../hooks/fieldConnectors";
 import { useOrderEntryStore } from "../../store";
-import { ExpiryStrategy, OrderStateData, TargetExecutionRate } from "../../types/domain";
+import {
+  ExpiryStrategy,
+  OrderSide,
+  OrderStateData,
+  OrderType,
+  TargetExecutionRate,
+} from "../../types/domain";
 import { Input } from "../atoms/Input";
 import { InputDate } from "../atoms/InputDate";
 import { InputTime } from "../atoms/InputTime";
@@ -82,8 +88,31 @@ export const FieldRenderer = React.memo(({ fieldKey, rowIndex }: FieldRendererPr
   const refDataError = useOrderEntryStore((s) => s.refDataErrors[fieldKey]);
   const editMode = useOrderEntryStore((s) => s.editMode);
 
+  // ===== Auto-Grab State (for level field) =====
+  const dirtyLevel = useOrderEntryStore((s) => s.dirtyValues.level);
+  const fdc3Level = useOrderEntryStore((s) => s.fdc3Intent?.level);
+  const currentBuyPrice = useOrderEntryStore((s) => s.currentBuyPrice);
+  const currentSellPrice = useOrderEntryStore((s) => s.currentSellPrice);
+
   // ===== Field Configuration =====
   const def = FIELD_REGISTRY[fieldKey];
+
+  // ===== Auto-Grab Computation (for level field only) =====
+  // Determines if the level field is in auto-grab mode (showing ticking prices)
+  const LEVEL_ORDER_TYPES: OrderType[] = [
+    OrderType.TAKE_PROFIT,
+    OrderType.STOP_LOSS,
+    OrderType.POUNCE,
+    OrderType.CALL_LEVEL,
+    OrderType.FLOAT,
+  ];
+  const isLevelAutoGrab =
+    fieldKey === "level" &&
+    LEVEL_ORDER_TYPES.includes(orderType as OrderType) &&
+    dirtyLevel === undefined &&
+    fdc3Level === undefined &&
+    currentBuyPrice > 0 &&
+    currentSellPrice > 0;
 
   // ===== Currency Pair Parsing =====
   const currentPair = currencyPairs.find((p) => p.symbol === currencyPair);
@@ -122,6 +151,7 @@ export const FieldRenderer = React.memo(({ fieldKey, rowIndex }: FieldRendererPr
     isEditable,
     onDoubleClick: amendOrder,
     isValidating,
+    isAutoGrab: isLevelAutoGrab,
     ...(combinedError !== undefined && { error: combinedError }),
     ...(!combinedError && warning !== undefined && { warning }),
   };
@@ -160,48 +190,31 @@ export const FieldRenderer = React.memo(({ fieldKey, rowIndex }: FieldRendererPr
           readOnly={isReadOnly}
           ccy1={ccy1}
           ccy2={ccy2}
+          selectedCurrency={currentCcy}
+          onCurrencyChange={(newCcy: string) => {
+            // Persist currency change to store with current amount
+            setValue({ amount: numericAmount || 0, ccy: newCcy });
+          }}
         />
       </RowComponent>
     );
   }
 
-  // ===== Render LimitPriceWithCheckbox (FLOAT orders only) =====
+  // ===== Render LimitPriceWithCheckbox (all order types with level field) =====
+  // Note: The checkbox has been removed. Auto-grab is now handled in the store.
+  // LimitPriceWithCheckbox is now a simple input wrapper used for all order types.
   if (isLimitPriceComponent(def.component)) {
-    if (orderType === "FLOAT") {
-      return (
-        <RowComponent {...rowProps}>
-          <LimitPriceWithCheckbox
-            id={fieldKey}
-            name={fieldKey}
-            data-testid={`input-${fieldKey}`}
-            value={value as number | undefined}
-            onChange={setValue as (val: number | undefined) => void}
-            hasError={hasError}
-            readOnly={isReadOnly}
-            direction={side}
-          />
-        </RowComponent>
-      );
-    }
-    // Non-FLOAT orders: fallback to regular Input
-    // Safety: only convert primitives to string (avoid [object Object] errors)
-    const numValue = typeof value === "number" ? String(value) : "";
     return (
       <RowComponent {...rowProps}>
-        <Input
+        <LimitPriceWithCheckbox
           id={fieldKey}
           name={fieldKey}
           data-testid={`input-${fieldKey}`}
-          type="number"
-          value={numValue}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-            const val = e.target.value;
-            setValue(val === "" ? undefined : Number(val));
-          }}
+          value={value as number | undefined}
+          onChange={setValue as (val: number | undefined) => void}
           hasError={hasError}
           readOnly={isReadOnly}
-          step={PRICE_CONFIG.PRICE_STEP}
-          placeholder="0.00000"
+          direction={side as OrderSide}
         />
       </RowComponent>
     );

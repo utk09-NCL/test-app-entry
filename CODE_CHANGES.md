@@ -1,5 +1,72 @@
 # Code Changes Log
 
+## Phase 18: Selectors and Logger Test Coverage Completion (2025-12-30)
+
+### Summary
+
+Achieved 100% test coverage for both `selectors.ts` and `logger.ts` files by adding missing hook wrapper tests and fixing configuration-based logging tests.
+
+### Work Completed
+
+1. **`src/store/selectors.ts`** - Added missing hook wrapper test
+   - Added `useIsFieldDirty` hook test using `renderHook` from `@testing-library/react`
+   - Hook wrapper type verification tests
+   - **Coverage**: 50% functions → 100%
+
+2. **`src/store/middleware/logger.ts`** - Added mutable configuration for testing
+   - Created `loggerConfig` object with runtime-modifiable settings:
+     - `enablePriceLogging`: Controls price update logging (default reads from `VITE_ENABLE_PRICE_LOGGING`)
+     - `enableValidationLogging`: Controls validation logging (default reads from `VITE_ENABLE_VALIDATION_LOGGING`)
+   - Added `isPriceLoggingEnabled()` and `isValidationLoggingEnabled()` functions
+   - Added `resetPriceLogTime()` for test cleanup (resets throttle timer between tests)
+   - Exported `lastPriceLogTime` for test verification
+   - **Coverage**: 18.81% statements → 100%
+
+3. **`src/store/middleware/logger.spec.ts`** - Comprehensive logging tests
+   - Added "Logger Middleware - Price Logging Enabled" describe block (2 tests):
+     - Price updates logged with `[price tick]` suffix when enabled
+     - Throttle mechanism verified (1 log per second max)
+   - Added "Logger Middleware - Validation Logging Enabled" describe block (2 tests):
+     - Validation updates logged with `[validation]` suffix when enabled
+     - Both `isValidating` and `validationRequestIds` updates covered
+   - Added "Logging Configuration Functions" describe block (3 tests):
+     - Default state verification
+     - `loggerConfig` modification at runtime
+
+4. **`src/typings.d.ts`** - Added Vite environment types
+   - Added `ImportMetaEnv` interface with `VITE_ENABLE_PRICE_LOGGING` and `VITE_ENABLE_VALIDATION_LOGGING`
+   - Added `ImportMeta` interface for Vite's `import.meta.env`
+
+### Key Fixes
+
+1. **Throttle Test Fix**: The throttle test was failing because `lastPriceLogTime` persisted between tests. Fixed by:
+   - Exporting `resetPriceLogTime()` function from logger.ts
+   - Calling it in `beforeEach` of the Price Logging Enabled describe block
+
+2. **Spy Restoration Fix**: Tests in later describe blocks were failing because `vi.restoreAllMocks()` was breaking spies created at module load time. Fixed by:
+   - Removing `vi.restoreAllMocks()` from `afterEach` blocks
+   - Using only `vi.clearAllMocks()` which clears call history but keeps spies active
+
+### Testing Patterns Used
+
+- **Mutable Configuration Object**: Created `loggerConfig` that can be modified at runtime for testing, avoiding complex module mocking
+- **Timer Reset Function**: Exported `resetPriceLogTime()` for cleaning throttle state between tests
+- **Spy Preservation**: Used `vi.clearAllMocks()` instead of `vi.restoreAllMocks()` to maintain spy chain across describe blocks
+
+### Files Modified
+
+- `frontend/src/store/selectors.spec.ts` (+5 tests)
+- `frontend/src/store/middleware/logger.ts` (added mutable config, reset function)
+- `frontend/src/store/middleware/logger.spec.ts` (+7 tests)
+- `frontend/src/typings.d.ts` (added Vite env types)
+
+### Build & Lint Status
+
+- ✅ All tests passing
+- ✅ 100% coverage for selectors.ts and logger.ts
+
+---
+
 ## Phase 17: Test Fix and 100% Coverage Achievement (2025-12-08)
 
 ### Summary
@@ -34,14 +101,17 @@ Fixed failing test in `createSubmissionSlice.spec.ts` where the expected toast m
 **Custom Validation Coverage Added:**
 
 Lines 385-395: startMode validation
+
 - When `startMode === "START_AT"`, requires startTime, startDate, and timeZone
 - Empty string values are considered missing
 
 Lines 398-409: Expiry strategy validation
+
 - When `expiry.strategy === "GTD" || "GTT"`, requires expiryTime, expiryDate, and expiryTimeZone
 - Empty string values are considered missing
 
 Line 412: Error check after custom validation
+
 - Returns validation errors when custom validation finds issues
 
 ### Test Results
@@ -57,6 +127,7 @@ config/validation  |     100 |    96.07 |     100 |     100
 ```
 
 **Coverage Metrics Achieved:**
+
 - ✅ Statements: 100% (was 83.95%)
 - ✅ Lines: 100% (was 83.54%)
 - ✅ Functions: 100% (already 100%)
@@ -1452,29 +1523,29 @@ Added comprehensive unit tests for configuration files, store slices, and hooks 
 
 #### Store Tests
 
-6. **`src/store/slices/createDefaultsSlice.spec.ts`** - Tests for hardcoded defaults
+1. **`src/store/slices/createDefaultsSlice.spec.ts`** - Tests for hardcoded defaults
    - `HARDCODED_DEFAULTS`: all default values verification
    - `getDefaultOrderState`: returns new object each time, contains all defaults
 
-7. **`src/store/middleware/logger.spec.ts`** - Tests for logger middleware
+2. **`src/store/middleware/logger.spec.ts`** - Tests for logger middleware
    - Middleware function composition
    - Set/get/api passthrough
    - Wrapped set function behavior
 
 #### Hook Tests
 
-8. **`src/hooks/fieldConnectors/useFieldVisibility.spec.ts`** - Tests for visibility hook
+1. **`src/hooks/fieldConnectors/useFieldVisibility.spec.ts`** - Tests for visibility hook
    - Calls `isFieldVisible` with correct arguments
    - Returns correct visibility state for different order types
    - Uses `getDerivedValues` from store
 
-9. **`src/hooks/fieldConnectors/useFieldReadOnly.spec.ts`** - Tests for read-only hook
+2. **`src/hooks/fieldConnectors/useFieldReadOnly.spec.ts`** - Tests for read-only hook
    - Creating mode: fields editable
    - Viewing mode: all fields read-only, isEditable for editable fields
    - Amending mode: only editable fields writable
    - Always read-only fields: symbol, status
 
-10. **`src/hooks/fieldConnectors/useFieldValue.spec.ts`** - Tests for value hook
+3. **`src/hooks/fieldConnectors/useFieldValue.spec.ts`** - Tests for value hook
     - Gets value from `getDerivedValues`
     - `setValue` calls `setFieldValue` and `validateRefData`
     - Handles string, number, undefined values
@@ -1617,7 +1688,7 @@ Continued comprehensive unit testing with focus on remaining hooks, store integr
 
 #### Config Tests
 
-4. **`src/config/componentFactory.spec.ts`** - 27 tests
+1. **`src/config/componentFactory.spec.ts`** - 27 tests
    - `getInputType`: number vs text for different components
    - `isSelectComponent`, `isToggleComponent` predicates
    - `isAmountWithCurrencyComponent`, `isLimitPriceComponent` predicates
@@ -1625,7 +1696,7 @@ Continued comprehensive unit testing with focus on remaining hooks, store integr
 
 #### Store Integration Tests
 
-5. **`src/store/store.spec.ts`** - 38 tests
+1. **`src/store/store.spec.ts`** - 38 tests
    - **AppSlice**: status, editMode, currentOrderId, toast
    - **PriceSlice**: currentBuyPrice, currentSellPrice, setCurrentPrices
    - **RefDataSlice**: accounts, pools, currencyPairs, entitledOrderTypes

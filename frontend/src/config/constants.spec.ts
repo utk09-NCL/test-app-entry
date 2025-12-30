@@ -4,8 +4,10 @@ import { AMOUNT_CONFIG, NOTIONAL_LIMITS, PRICE_CONFIG, VALIDATION_CONFIG } from 
 
 describe("constants", () => {
   describe("PRICE_CONFIG", () => {
-    it("expect initial buy price to be greater than sell price when comparing spread", () => {
-      expect(PRICE_CONFIG.INITIAL_BUY_PRICE).toBeGreaterThan(PRICE_CONFIG.INITIAL_SELL_PRICE);
+    it("expect initial prices to be 0 for auto-grab feature", () => {
+      // Initial prices are 0 - actual prices come from WebSocket/GraphQL subscription
+      expect(PRICE_CONFIG.INITIAL_BUY_PRICE).toBe(0);
+      expect(PRICE_CONFIG.INITIAL_SELL_PRICE).toBe(0);
     });
 
     it("expect tick interval to be positive when defined", () => {

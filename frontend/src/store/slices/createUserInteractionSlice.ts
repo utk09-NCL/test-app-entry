@@ -19,12 +19,17 @@
  * 4. Errors cleared for that field (validation will rerun)
  * 5. getDerivedValues() returns merged state
  *
+ * Auto-Grab Level Reset Logic:
+ * - Order type change: Always clears dirtyValues.level (resets to auto-grab)
+ * - Currency pair change: Always clears dirtyValues.level (resets to auto-grab)
+ * - Side change: Does NOT clear dirty level (user edits are preserved)
+ *
  * Used by: FieldController (updates), OrderForm (reads merged values).
  */
 
 import { StateCreator } from "zustand";
 
-import { OrderStateData } from "../../types/domain";
+import { OrderSide, OrderStateData } from "../../types/domain";
 import { BoundState, UserInteractionSlice } from "../../types/store";
 
 export const createUserInteractionSlice: StateCreator<
@@ -32,7 +37,7 @@ export const createUserInteractionSlice: StateCreator<
   [["zustand/immer", never]],
   [],
   UserInteractionSlice
-> = (set) => ({
+> = (set, get) => ({
   /**
    * User-modified field values (overlay on baseValues).
    * Keys only exist for fields the user has actually changed.
@@ -46,6 +51,8 @@ export const createUserInteractionSlice: StateCreator<
    * Side effects:
    * - Clears existing errors (validation will rerun)
    * - Clears server errors (may be stale after edit)
+   * - Order type or currency pair change: Clears level to reset auto-grab
+   * - Side change: Updates lastGrabbedSide for price direction tracking
    */
   setFieldValue: <K extends keyof OrderStateData>(field: K, value: OrderStateData[K] | undefined) =>
     set((state) => {
@@ -55,6 +62,21 @@ export const createUserInteractionSlice: StateCreator<
       // Clear errors for this field (user is actively fixing it)
       if (state.errors[field]) delete state.errors[field];
       if (state.serverErrors[field]) delete state.serverErrors[field];
+
+      // ============================================
+      // AUTO-GRAB LEVEL RESET LOGIC
+      // ============================================
+      // Order type or currency pair change → always reset level to auto-grab
+      // This ensures user gets fresh prices when context changes significantly
+      if (field === "orderType" || field === "currencyPair") {
+        delete state.dirtyValues.level;
+      }
+
+      // Side change → track the new side for auto-grab price direction
+      // Note: We do NOT clear dirty level here - user edits are preserved
+      if (field === "side") {
+        get().setLastGrabbedSide(value as OrderSide);
+      }
     }),
 
   /**

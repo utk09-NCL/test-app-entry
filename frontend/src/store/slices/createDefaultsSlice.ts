@@ -30,7 +30,7 @@ import { BoundState } from "../../types/store";
  * These represent sensible defaults for a new order.
  * Uses server-aligned naming (currencyPair, side, amount).
  */
-export const HARDCODED_DEFAULTS: DefaultsLayerData = {
+export const DEFAULT_DATA: DefaultsLayerData = {
   currencyPair: "GBPUSD",
   side: OrderSide.BUY,
   orderType: OrderType.FLOAT,
@@ -56,10 +56,10 @@ export const createDefaultsSlice: StateCreator<
   [],
   DefaultsSlice
 > = () => ({
-  defaults: HARDCODED_DEFAULTS,
+  defaults: DEFAULT_DATA,
 
   getDefault: <K extends keyof DefaultsLayerData>(field: K): DefaultsLayerData[K] => {
-    return HARDCODED_DEFAULTS[field];
+    return DEFAULT_DATA[field];
   },
 });
 
@@ -68,5 +68,5 @@ export const createDefaultsSlice: StateCreator<
  * Used when computing derived values.
  */
 export const getDefaultOrderState = (): Partial<OrderStateData> => ({
-  ...HARDCODED_DEFAULTS,
+  ...DEFAULT_DATA,
 });
