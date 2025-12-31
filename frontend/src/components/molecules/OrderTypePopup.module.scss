@@ -1,0 +1,121 @@
+@use "sass:color";
+@use "../../styles/variables" as *;
+
+// =============================================================================
+// TRIGGER BUTTON
+// =============================================================================
+
+.trigger {
+  // Match the Select component styling
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: $oe-color-bg;
+  border: 1px solid $oe-color-border;
+  border-radius: $oe-radius-sm;
+  padding: 0.5rem 0.75rem;
+  color: $oe-color-text;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: border-color $oe-transition-fast, box-shadow $oe-transition-fast;
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 1px $oe-color-primary;
+    border-color: $oe-color-primary;
+  }
+
+  &:hover:not(:focus):not(.disabled) {
+    border-color: color.adjust($oe-color-border, $lightness: 10%);
+  }
+
+  &.open {
+    border-color: $oe-color-primary;
+    box-shadow: 0 0 0 1px $oe-color-primary;
+  }
+
+  &.disabled {
+    opacity: $oe-opacity-disabled;
+    cursor: not-allowed;
+  }
+}
+
+.value {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chevron {
+  width: 1rem;
+  height: 1rem;
+  fill: $oe-color-muted;
+  flex-shrink: 0;
+  margin-left: 0.5rem;
+  transition: transform $oe-transition-fast;
+
+  .open & {
+    transform: rotate(180deg);
+  }
+}
+
+// =============================================================================
+// POPUP LIST
+// =============================================================================
+
+.list {
+  background-color: $oe-color-surface;
+  border: 1px solid $oe-color-border;
+  border-radius: $oe-radius-md;
+  padding: 0.25rem 0;
+  overflow-y: auto;
+  max-height: 280px;
+  box-shadow: $oe-shadow-lg;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+.option {
+  // Reset button styles
+  appearance: none;
+  background: none;
+  border: none;
+  font-family: inherit;
+  text-align: left;
+  width: 100%;
+
+  // Option styling
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: $oe-color-text;
+  cursor: pointer;
+  transition: background-color $oe-transition-fast;
+
+  &:hover,
+  &.focused {
+    background-color: $oe-color-bg-hover;
+  }
+
+  &.selected {
+    color: $oe-color-primary;
+    font-weight: 500;
+  }
+
+  &.focused {
+    background-color: rgba($oe-color-primary, 0.15);
+  }
+}
+
+.checkmark {
+  color: $oe-color-primary;
+  font-size: 0.75rem;
+  margin-left: 0.5rem;
+}

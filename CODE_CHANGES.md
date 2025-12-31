@@ -1,5 +1,298 @@
 # Code Changes Log
 
+## Phase 22: Popup Module TypeScript Fixes (2025-12-31)
+
+### Summary
+
+Fixed TypeScript compilation errors in popup module test files related to type assertions, generic function mocks, and context type annotations.
+
+### Files Modified
+
+1. **`src/components/popup/hooks.spec.ts`** - Fixed mock context types
+   - Added `as const` for theme string literals (`"dark"`, `"light"`)
+   - Added type assertion for `open` mock function
+
+2. **`src/components/popup/Popup.spec.tsx`** - Fixed type errors
+   - Moved React import to avoid unused import error
+   - Added `as const` for theme string literals
+   - Added type assertion for `open` mock function as `PopupContextValueWithConfig["open"]`
+
+3. **`src/components/popup/usePopup.spec.ts`** - Fixed mock context types
+   - Added `as const` for theme string literals
+   - Added type assertion for `open` mock function
+
+4. **`src/components/popup/PopupProvider.spec.tsx`** - Fixed context type annotations
+   - Replaced incorrect `ReturnType<typeof useContext<typeof PopupContext>>` with `PopupContextValueWithConfig | null`
+   - Replaced incorrect `ReturnType<typeof useContext<typeof PopupConfigContext>>` with `PopupSystemConfig | null`
+   - Fixed `createMockHandle` function to handle `exactOptionalPropertyTypes` - only set `data` property if it's defined
+   - Added imports for `PopupContextValueWithConfig` and `PopupSystemConfig`
+   - Changed `?.` optional chaining to `!.` non-null assertions for captured context variables after render
+
+5. **`src/components/popup/utils/webAdapter.spec.ts`** - Fixed missing closeReason
+   - Added `closeReason: "submit"` to the result object in close test
+
+### Technical Details
+
+**Type Issues Fixed:**
+
+- `vi.fn(() => "dark")` returns `Mock<() => string>` but `getTheme` expects `() => PopupTheme` - fixed with `as const`
+- `vi.fn()` for generic open function needs explicit type assertion
+- `ReturnType<typeof useContext<typeof Context>>` incorrectly resolves to `Context<T>` instead of `T` in test files
+- `data?: T` with `exactOptionalPropertyTypes` requires conditional property assignment
+
+---
+
+## Phase 21: Popup Module Unit Tests (2025-12-31)
+
+### Summary
+
+Fixed type issues in popup constants and added comprehensive unit tests for the entire popup module to achieve full test coverage.
+
+### Files Created
+
+1. **`src/components/popup/context.spec.ts`** - Tests for PopupContext and PopupConfigContext
+   - Context existence and default value tests
+
+2. **`src/components/popup/hooks.spec.ts`** - Tests for popup hooks
+   - `usePopupContext`, `usePopupEnvironment`, `usePopupTheme`, `usePopupConfig` hooks
+   - MutationObserver mocking, context error handling, theme observation
+
+3. **`src/components/popup/usePopup.spec.ts`** - Tests for imperative popup API
+   - `usePopup`, `useDropdown`, `useDialog`, `useTooltip` hooks
+   - Open/close/toggle functionality, controlled state, callbacks
+
+4. **`src/components/popup/Popup.spec.tsx`** - Tests for declarative Popup component
+   - `Popup`, `DropdownPopup`, `DialogPopup`, `TooltipPopup` components
+   - Controlled/uncontrolled modes, ARIA attributes, callbacks
+
+5. **`src/components/popup/PopupProvider.spec.tsx`** - Tests for PopupProvider component
+   - Context provision, environment detection, config merging
+   - Popup management, theme handling, cleanup
+
+6. **`src/components/popup/utils/communication.spec.ts`** - Tests for communication utilities
+   - `generateChannelId`, `createMessage`, `createPopupChannel`
+   - `getCurrentTheme`, `applyTheme`, `observeThemeChanges`
+   - `parsePopupParams`, `buildPopupUrl`
+
+7. **`src/components/popup/utils/webAdapter.spec.ts`** - Tests for web browser popup implementation
+   - DOM creation, positioning, event handling
+   - Handle methods, `initWebPopupChild`
+
+8. **`src/components/popup/utils/openfinAdapter.spec.ts`** - Tests for OpenFin popup implementation
+   - `isOpenFinAvailable`, adapter methods
+   - `showPopupWindow` options, `initOpenFinPopupChild`
+
+### Files Modified
+
+1. **`src/components/popup/constants.ts`** - Type fixes
+   - Created explicit interface types (`DimensionsConfig`, `PositioningConfig`, `BehaviorConfig`, `ThemeConfig`, `OpenFinConfig`, `IframeConfig`)
+   - Fixed `PopupSystemConfig` type to use widened types instead of narrow literal types from `as const`
+   - Added `PopupPlacement`, `BlurBehavior`, `ThemeOption` type exports
+   - Fixed `mergeConfig` function return type issues
+
+### Test Summary
+
+- **Total tests**: 273 passing
+- **Test files**: 10 passing
+- All popup module files now have comprehensive test coverage
+
+---
+
+## Phase 20: Popup Integration - OrderType & FDC3 Dialog (2025-12-30)
+
+### Summary
+
+Integrated the cross-platform Popup system with the Order Type selector and FDC3 confirm dialog. This demonstrates both dropdown and modal dialog patterns using the unified Popup system.
+
+### Files Created
+
+1. **`src/components/molecules/OrderTypePopup.tsx`** - Popup-based order type selector
+   - Replaces native Select dropdown for Order Type field
+   - Keyboard navigation support (Arrow keys, Enter, Escape)
+   - Accessible listbox pattern with ARIA attributes
+   - Controlled mode with external state management
+
+2. **`src/components/molecules/OrderTypePopup.module.scss`** - Styles for OrderTypePopup
+   - Trigger button styling matching Select component
+   - Dropdown list with hover and focus states
+   - Checkmark indicator for selected option
+
+3. **`src/components/organisms/Fdc3ConfirmDialogPopup.tsx`** - Popup-based FDC3 dialog
+   - Modal dialog using DialogPopup
+   - Uses usePopupChild() for close actions
+   - Centered using CSS flexbox (no hidden anchor positioning)
+   - Reuses existing styles from Fdc3ConfirmDialog.module.scss
+
+### Files Modified
+
+1. **`src/App.tsx`** - Updated providers and dialog
+   - Added PopupProvider to app root (serves all popups)
+   - Switched to Fdc3ConfirmDialogPopup
+
+2. **`src/components/organisms/OrderForm.tsx`** - Uses OrderTypePopup
+   - Replaced Select with OrderTypePopup for Order Type field
+
+3. **`src/components/organisms/Fdc3ConfirmDialog.tsx`** - Marked @deprecated
+   - Old implementation kept for reference
+   - New code should use Fdc3ConfirmDialogPopup
+
+4. **`src/components/organisms/Fdc3ConfirmDialog.module.scss`** - Added dialogContent class
+   - New `.dialogContent` class for popup-based dialog (no background/border)
+   - Original `.dialog` class preserved for deprecated component
+
+5. **`src/styles/global.scss`** - Added CSS custom properties
+   - Mirrors SCSS variables as CSS custom properties
+   - Required for popup's JavaScript-generated inline styles
+   - Properties: colors, border-radius, shadows
+
+6. **`src/components/popup/types.ts`** - Added auto width support
+   - `width` now accepts `"auto"` in addition to numbers
+
+7. **`src/components/popup/utils/webAdapter.ts`** - Multiple fixes
+   - Auto-sizing for component content (fit-content)
+   - Transparent clickable overlay for dropdowns (blur-to-close)
+   - CSS flexbox centering for modals with hidden anchors
+   - Hidden anchor detection (offsetWidth/offsetHeight === 0)
+
+8. **`src/components/popup/utils/openfinAdapter.ts`** - Handle auto width
+   - Falls back to default width when "auto" specified
+
+9. **`src/components/popup/Popup.tsx`** - Fixed controlled mode click handling
+
+### Key Fixes
+
+- **Blur-to-close for dropdowns**: Added `popup-overlay--transparent-clickable` class
+- **Modal centering**: Modals with hidden anchors use CSS flexbox centering instead of absolute positioning
+- **CSS custom properties**: Defined `--oe-color-*` variables for popup styling consistency
+
+### Usage Patterns
+
+**Dropdown (DropdownPopup)**:
+
+- `blurBehavior="close"` - closes on outside click
+- Anchored to trigger element
+- Auto-sized to content
+
+**Modal Dialog (DialogPopup)**:
+
+- `blurBehavior="none"` - stays open until explicit close
+- Centered with CSS flexbox (use hidden trigger)
+- Backdrop with click blocking
+- Content uses `usePopupChild()` for close actions
+
+---
+
+## Phase 19: Cross-Platform Popup System (2025-12-30)
+
+### Summary
+
+Created a comprehensive popup wrapper system that works seamlessly in both OpenFin and standard web browser environments. The system provides both declarative (component) and imperative (hook) APIs for managing popups with features like parent-child communication, theme synchronization, and custom positioning.
+
+### Files Created
+
+1. **`src/components/popup/types.ts`** - Comprehensive TypeScript definitions
+   - Environment, positioning, content, and theme types
+   - PopupOptions, PopupHandle, and PopupResult interfaces
+   - Hook and component prop types
+
+2. **`src/components/popup/utils/positioning.ts`** - Position calculations
+   - `calculatePopupPosition()` - Calculate popup position relative to anchor
+   - `calculateCenterPosition()` - Center popup in viewport
+   - Viewport boundary handling with flip and shift behaviors
+
+3. **`src/components/popup/utils/communication.ts`** - Parent-child messaging
+   - BroadcastChannel API with postMessage fallback
+   - `createPopupChannel()` - Create communication channel
+   - `observeThemeChanges()` - Theme synchronization via MutationObserver
+   - `buildPopupUrl()` - Build popup URL with params
+
+4. **`src/components/popup/utils/openfinAdapter.ts`** - OpenFin implementation
+   - Uses native `showPopupWindow` API
+   - Screen coordinate positioning
+   - Communication via `dispatchPopupResult` and `customData`
+   - `initOpenFinPopupChild()` - Initialize child popup context
+
+5. **`src/components/popup/utils/webAdapter.ts`** - Web browser implementation
+   - Iframe modal overlay for URL/HTML content
+   - React Portal for component content
+   - Animation support (enter/exit)
+   - `usePopupChild()` hook for child components
+
+6. **`src/components/popup/context.ts`** - React context for popup state
+
+7. **`src/components/popup/hooks.ts`** - Context access hooks
+   - `usePopupContext()` - Access popup context
+   - `usePopupEnvironment()` - Get current environment
+   - `usePopupTheme()` - Track current theme
+
+8. **`src/components/popup/PopupProvider.tsx`** - Provider component
+   - Auto-detects OpenFin vs web environment
+   - Manages active popups
+   - Provides theme synchronization
+
+9. **`src/components/popup/usePopup.ts`** - Imperative hook API
+   - `usePopup()` - General popup management
+   - `useDropdown()` - Pre-configured for dropdown menus
+   - `useDialog()` - Pre-configured for modal dialogs
+   - `useTooltip()` - Pre-configured for tooltips
+
+10. **`src/components/popup/Popup.tsx`** - Declarative component API
+    - `<Popup>` - Main popup component
+    - `<DropdownPopup>` - Dropdown preset
+    - `<DialogPopup>` - Modal dialog preset
+    - `<TooltipPopup>` - Tooltip preset
+
+11. **`src/components/popup/index.ts`** - Barrel exports
+
+12. **`src/components/popup/README.md`** - Documentation
+    - Architecture diagrams for web and OpenFin
+    - Usage examples
+    - File structure reference
+
+### Key Features
+
+- **Cross-Platform**: Automatically detects OpenFin vs web environment
+- **Content Types**: URL, React component, or raw HTML
+- **Positioning**: Custom placement with flip/shift for viewport boundaries
+- **Theme Sync**: Automatic light/dark theme synchronization
+- **Communication**: BroadcastChannel + postMessage for parent-child messaging
+- **APIs**: Both hook-based (imperative) and component-based (declarative)
+- **Presets**: DropdownPopup, DialogPopup, TooltipPopup convenience components
+
+### Usage Examples
+
+```tsx
+// Declarative API
+<Popup
+  content={{ type: 'component', component: MenuContent }}
+  position={{ placement: 'bottom-start' }}
+>
+  <button>Open Menu</button>
+</Popup>
+
+// Imperative API
+const { open, triggerRef, triggerProps } = usePopup({
+  content: { type: 'url', url: '/popup/calendar' }
+});
+
+<button ref={triggerRef} {...triggerProps}>Open</button>
+
+// Inside popup content
+const { close, sendToParent, theme } = usePopupChild();
+
+<button onClick={() => close({ data: selectedValue })}>
+  Confirm
+</button>
+```
+
+### Build & Lint Status
+
+- All TypeScript errors resolved
+- ESLint warnings addressed (moved hooks to separate files for react-refresh)
+- Build successful
+
+---
+
 ## Phase 18: Selectors and Logger Test Coverage Completion (2025-12-30)
 
 ### Summary

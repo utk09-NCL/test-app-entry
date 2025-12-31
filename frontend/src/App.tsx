@@ -25,9 +25,10 @@
 import { ApolloProvider } from "@apollo/client";
 
 import { Spinner } from "./components/atoms/Spinner";
-import { Fdc3ConfirmDialog } from "./components/organisms/Fdc3ConfirmDialog";
+import { Fdc3ConfirmDialogPopup } from "./components/organisms/Fdc3ConfirmDialogPopup";
 import { OrderForm } from "./components/organisms/OrderForm";
 import { OrderHeader } from "./components/organisms/OrderHeader";
+import { PopupProvider } from "./components/popup";
 import { MainLayout } from "./components/templates/MainLayout";
 import { graphqlClient } from "./graphql/client";
 import { useAppInit } from "./hooks/useAppInit";
@@ -76,7 +77,7 @@ function App() {
       <div data-testid="order-form-entry">
         <OrderForm />
       </div>
-      <Fdc3ConfirmDialog />
+      <Fdc3ConfirmDialogPopup />
     </MainLayout>
   );
 }
@@ -84,7 +85,9 @@ function App() {
 export default function AppWithProviders() {
   return (
     <ApolloProvider client={graphqlClient}>
-      <App />
+      <PopupProvider>
+        <App />
+      </PopupProvider>
     </ApolloProvider>
   );
 }

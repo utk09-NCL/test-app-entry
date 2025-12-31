@@ -1,6 +1,30 @@
 @use "./variables" as *;
 
 // ============================================
+// CSS CUSTOM PROPERTIES (for popup system and dynamic styling)
+// These mirror the SCSS variables for use in JavaScript-generated styles
+// ============================================
+:root {
+  // Colors
+  --oe-color-bg: #{$oe-color-bg};
+  --oe-color-surface: #{$oe-color-surface};
+  --oe-color-border: #{$oe-color-border};
+  --oe-color-text: #{$oe-color-text};
+  --oe-color-text-secondary: #{$oe-color-text-secondary};
+  --oe-color-muted: #{$oe-color-muted};
+  --oe-color-primary: #{$oe-color-primary};
+
+  // Border radius
+  --oe-radius-sm: #{$oe-radius-sm};
+  --oe-radius-md: #{$oe-radius-md};
+  --oe-radius-lg: #{$oe-radius-lg};
+
+  // Shadows
+  --oe-shadow-lg: #{$oe-shadow-lg};
+  --oe-shadow-xl: #{$oe-shadow-xl};
+}
+
+// ============================================
 // SIZE VARIANTS (for S-M-L functionality)
 // ============================================
 :root {

@@ -35,7 +35,7 @@ import { ORDER_TYPES } from "../../config/orderConfig";
 import { useFieldOrder } from "../../hooks/useFieldOrder";
 import { useOrderEntryStore } from "../../store";
 import { OrderStateData, OrderType } from "../../types/domain";
-import { Select } from "../atoms/Select";
+import { OrderTypePopup } from "../molecules/OrderTypePopup";
 import { ReorderableFieldList } from "../molecules/ReorderableFieldList";
 import { ReorderModeBanner } from "../molecules/ReorderModeBanner";
 import { RowComponent } from "../molecules/RowComponent";
@@ -95,16 +95,15 @@ export const OrderForm = React.memo(() => {
     <div className={styles.container} data-testid="order-form" data-app-state={editMode}>
       {/* Order Type Selector - Always shown first, not reorderable */}
       {/* When user changes this, the entire form re-renders with new fields */}
+      {/* Uses Popup-based OrderTypePopup for consistent cross-platform behavior */}
       <RowComponent label="Order Type" fieldKey="orderType" rowIndex={0}>
-        <Select
-          id="orderType"
-          name="orderType"
+        <OrderTypePopup
           data-testid="select-orderType"
           value={orderType}
-          onChange={(e) =>
+          onChange={(value) =>
             // Call store action directly to update order type
             // This triggers form re-render with new field configuration
-            useOrderEntryStore.getState().setFieldValue("orderType", e.target.value as OrderType)
+            useOrderEntryStore.getState().setFieldValue("orderType", value as OrderType)
           }
           options={
             // In CREATE mode: Show only entitled order types from server

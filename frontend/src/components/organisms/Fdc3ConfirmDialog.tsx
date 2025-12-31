@@ -1,6 +1,10 @@
 /**
  * FDC3 Confirm Dialog Component
  *
+ * @deprecated Use Fdc3ConfirmDialogPopup from './Fdc3ConfirmDialogPopup' instead.
+ * This component uses a custom modal implementation. The new Fdc3ConfirmDialogPopup
+ * uses the unified Popup system with better cross-platform support.
+ *
  * This modal dialog appears when an FDC3 intent arrives while the user
  * has unsaved changes in the form. It gives the user a choice:
  * - Accept: Apply the incoming intent data, discarding unsaved changes

@@ -25,6 +25,14 @@
   animation: slideIn $oe-transition-fast;
 }
 
+// Used by Fdc3ConfirmDialogPopup - content inside popup container
+// No background/border since popup-container provides those
+.dialogContent {
+  padding: $oe-spacing-xl;
+  max-width: 400px;
+  min-width: 320px;
+}
+
 .header {
   display: flex;
   align-items: center;
